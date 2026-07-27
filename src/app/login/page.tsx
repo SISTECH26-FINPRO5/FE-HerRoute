@@ -93,7 +93,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
 
           {/* Heading */}
           <h1 className="text-[36px] leading-[44px] font-normal text-center" style={{ color: "#FCF8FA" }}>
-            Welcome to <span className="font-semibold" style={{ color: "#FA1190" }}>SafeRoute</span>
+            Welcome to <span className="font-semibold" style={{ color: "#FA1190" }}>HerRoute</span>
           </h1>
 
           {/* Google login */}
