@@ -1,0 +1,222 @@
+/* ─── SafeRoute – Global Styles ─────────────────────────────────────────── */
+
+/* Base font */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #1A0F18;
+  color: #FCF8FA;
+}
+
+/* ─── Color Variables ────────────────────────────────────────────────────── */
+:root {
+  --color-primary:        #FA1190;
+  --color-primary-dark:   #75003F;
+  --color-bg-dark:        #1A0F18;
+  --color-bg-main:        #2A0017;
+  --color-bg-card:        #1E2024;
+  --color-text-primary:   #FCF8FA;
+  --color-text-secondary: #F9EBF3;
+  --color-text-light:     #F7DDEB;
+  --color-success:        #4ADE80;
+}
+
+/* ─── Keyframe Animations ────────────────────────────────────────────────── */
+
+/* SOS pulse ring — radiates outward on activation */
+@keyframes sos-pulse {
+  0%   { transform: scale(1);    opacity: 0.8; }
+  100% { transform: scale(1.95); opacity: 0;   }
+}
+
+/* SOS hold — subtle breathing while pressed */
+@keyframes sos-breathe {
+  0%, 100% { transform: scale(1);    }
+  50%       { transform: scale(0.97); }
+}
+
+/* Page fade-slide in */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+/* Page fade-slide out */
+@keyframes page-exit {
+  from { opacity: 1; transform: translateX(0);      }
+  to   { opacity: 0; transform: translateX(-24px);  }
+}
+
+/* Modal backdrop fade */
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Modal card slide-up */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ─── Utility Classes ────────────────────────────────────────────────────── */
+
+.page-enter  { animation: page-enter  0.35s ease both; }
+.page-exit   { animation: page-exit   0.35s ease both; }
+.modal-enter { animation: modal-in    0.25s ease both;  }
+
+/* Login left-panel gradient */
+.login-panel-gradient {
+  background: linear-gradient(
+    180deg,
+    rgba(42, 0, 23, 0.92)   0%,
+    rgba(144, 0, 79, 0.88) 100%
+  );
+}
+
+/* Dashboard navbar */
+.navbar {
+  background: var(--color-primary-dark);
+  height: 103px;
+}
+
+/* Feature card base */
+.feature-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-bg-card);
+  border-radius: 15px;
+  transition: opacity 0.15s ease;
+}
+.feature-card:hover { opacity: 0.8; }
+
+/* Feature card icon badge */
+.feature-icon-badge {
+  background: var(--color-primary);
+  border-radius: 10px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* SOS orb */
+.sos-orb {
+  background: radial-gradient(50% 50% at 50% 50%, #90004F 0%, #2A0017 94.71%);
+  border-radius: 9999px;
+}
+
+/* SOS main button */
+.sos-btn {
+  background: #FF0000;
+  border-radius: 9999px;
+  box-shadow: 0 0 24px rgba(255, 0, 0, 0.45);
+  cursor: pointer;
+  user-select: none;
+}
+.sos-btn:hover  { box-shadow: 0 0 36px rgba(255, 0, 0, 0.65); }
+.sos-btn.active { background: #cc0000; box-shadow: 0 0 60px rgba(255, 0, 0, 0.9), 0 0 120px rgba(255, 0, 0, 0.4); }
+
+/* Modal backdrop */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: backdrop-in 0.2s ease both;
+}
+
+/* Modal card */
+.modal-card {
+  background: var(--color-bg-main);
+  border-radius: 20px;
+  animation: modal-in 0.25s ease both;
+}
+
+/* Input field (login / forms) */
+.input-field {
+  background: var(--color-bg-dark);
+  border-radius: 8px;
+  border: 1px solid var(--color-text-light);
+  color: var(--color-text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+}
+.input-field::placeholder { color: rgba(252, 248, 250, 0.4); }
+
+/* Login form card */
+.login-form-card {
+  background: var(--color-bg-card);
+  border-radius: 8px;
+  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Primary button */
+.btn-primary {
+  background: var(--color-primary);
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 20px;
+  width: 100%;
+  transition: opacity 0.15s ease;
+}
+.btn-primary:hover { opacity: 0.9; }
+
+/* Tab toggle pill */
+.tab-pill {
+  background: var(--color-bg-main);
+  border: 1px solid var(--color-text-light);
+  border-radius: 9999px;
+}
+
+/* Dashed add button */
+.btn-dashed {
+  border: 1px dashed var(--color-text-light);
+  background: var(--color-bg-main);
+  border-radius: 15px;
+  color: var(--color-text-light);
+  font-weight: 600;
+  font-size: 14px;
+  transition: opacity 0.15s ease;
+}
+.btn-dashed:hover { opacity: 0.8; }
+
+/* Contact row separator */
+.contact-row {
+  border-bottom: 1px solid rgba(247, 221, 235, 0.25);
+}
+
+/* Emergency service card */
+.emergency-card {
+  background: rgba(117, 0, 63, 0.3);
+  border-radius: 20px;
+  transition: opacity 0.15s ease;
+}
+.emergency-card:hover { opacity: 0.8; }
+
+/* Emergency icon circle */
+.emergency-icon {
+  background: var(--color-primary-dark);
+  border-radius: 9999px;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Incident type chip */
+.incident-chip {
+  background: rgba(117, 0, 63, 0.25);
+  border: 1px solid var(--color-primary-dark);
+  border-radius: 15px;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.15s ease;
+}
+.incident-chip.selected {
+  background: rgba(117, 0, 63, 0.5);
+  border-color: var(--color-primary);
+}
