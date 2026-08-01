@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Map, FileWarning, Users, Phone, MapPin, AlertTriangle } from "lucide-react";
 import { FeatureCard } from "../components/FeatureCard";
-import { SOSButton }   from "../components/SOSButton";
+import { SOSButton } from "../components/SOSButton";
 import { TrustedContactsPage } from "../trusted-contacts/page";
-import { QuickCallPage }       from "../quick-call/page";
+import { QuickCallPage } from "../quick-call/page";
 import { AnonymousReportPage } from "../anonymous-report/page";
 
 type Modal = "none" | "contacts" | "quickcall" | "report";
 
-export function DashboardPage({ onLogout }: { onLogout: () => void }) {
-  const [modal, setModal]     = useState<Modal>("none");
+// 1. Tambahkan onGoToMap di parameter props
+export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; onGoToMap: () => void }) {
+  const [modal, setModal] = useState<Modal>("none");
   const [activeNav, setActiveNav] = useState("Homepage");
 
   const closeModal = () => setModal("none");
@@ -21,19 +22,20 @@ export function DashboardPage({ onLogout }: { onLogout: () => void }) {
       icon: <Map size={22} style={{ color: "#F7DDEB" }} />,
       title: "Safe Route",
       desc: "Bandingkan rute berdasarkan tingkat resiko",
-      onClick: () => setActiveNav("Map"),
+      // 2. Ubah onClick dari setActiveNav("Map") menjadi pemanggil onGoToMap
+      onClick: onGoToMap,
     },
     {
       icon: <AlertTriangle size={22} style={{ color: "#F7DDEB" }} />,
       title: "Risk Prediction",
       desc: "Tingkat risiko di rute pilihanmu",
-      onClick: () => {},
+      onClick: () => { },
     },
     {
       icon: <MapPin size={22} style={{ color: "#F7DDEB" }} />,
       title: "Safe Place",
       desc: "Pos polisi, Toko 24 jam, RS terdekat",
-      onClick: () => {},
+      onClick: () => { },
     },
     {
       icon: <Phone size={22} style={{ color: "#F7DDEB" }} />,
@@ -80,7 +82,14 @@ export function DashboardPage({ onLogout }: { onLogout: () => void }) {
           {navItems.map((item) => (
             <button
               key={item}
-              onClick={() => setActiveNav(item)}
+              // 3. Tambahkan logika: jika item yang diklik adalah "Map", jalankan pindah halaman.
+              onClick={() => {
+                if (item === "Map") {
+                  onGoToMap();
+                } else {
+                  setActiveNav(item);
+                }
+              }}
               className="font-semibold text-[20px] leading-[24px] pb-[5px] transition-all hover:opacity-80"
               style={{
                 color: "#F9EBF3",
@@ -130,7 +139,7 @@ export function DashboardPage({ onLogout }: { onLogout: () => void }) {
 
       {/* ── SOS Button ── */}
       <div className="flex justify-center mt-[48px]">
-        <SOSButton onActivate={() => {}} />
+        <SOSButton onActivate={() => { }} />
       </div>
 
       {/* ── Feature Cards ── */}
@@ -147,8 +156,8 @@ export function DashboardPage({ onLogout }: { onLogout: () => void }) {
 
       {/* ── Modals ── */}
       {modal === "contacts" && <TrustedContactsPage onClose={closeModal} />}
-      {modal === "quickcall" && <QuickCallPage       onClose={closeModal} />}
-      {modal === "report"   && <AnonymousReportPage  onClose={closeModal} />}
+      {modal === "quickcall" && <QuickCallPage onClose={closeModal} />}
+      {modal === "report" && <AnonymousReportPage onClose={closeModal} />}
     </div>
   );
 }
