@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 // IMPORT LEAFLET COMPONENTS
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Rectangle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -11,6 +11,37 @@ const DefaultIcon = L.icon({
     iconAnchor: [12, 41],
 });
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// --- CUSTOM DIV ICONS (khusus untuk marker "posisi saat ini" & badge shield-star) ---
+// Ini murni tampilan (divIcon), tidak menyentuh logic fetch/handler sama sekali.
+const currentPositionIcon = L.divIcon({
+    className: "custom-current-position-icon",
+    html: `
+        <div style="position:relative; width:90px; height:90px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:absolute; inset:0; border-radius:9999px; background:#FA1190; opacity:0.18; filter: blur(2px);"></div>
+            <div style="position:absolute; width:78px; height:78px; border-radius:9999px; background:#FA1190; opacity:0.7;"></div>
+            <span style="position:relative; z-index:2; color:#FFFFFF; font-family:'Inter', sans-serif; font-weight:700; font-size:11px; line-height:13px; text-align:center; width:66px;">Posisi kamu saat ini</span>
+        </div>
+    `,
+    iconSize: [90, 90],
+    iconAnchor: [45, 45],
+});
+
+const shieldStarIcon = (color: string) =>
+    L.divIcon({
+        className: "custom-shield-star-icon",
+        html: `
+            <div style="position:relative; width:56px; height:56px; display:flex; align-items:center; justify-content:center;">
+                <div style="position:absolute; inset:0; border-radius:9999px; background:${color}; opacity:0.25; filter: blur(4px);"></div>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="position:relative; z-index:2;">
+                    <path d="M12 2L4 5v6c0 5.25 3.5 9.75 8 11 4.5-1.25 8-5.75 8-11V5l-8-3z" fill="#FA1190"/>
+                    <path d="M12 7.5l1.1 2.25 2.48.36-1.79 1.75.42 2.47L12 13.15l-2.21 1.18.42-2.47-1.79-1.75 2.48-.36L12 7.5z" fill="#FFFFFF"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [56, 56],
+        iconAnchor: [28, 28],
+    });
 
 // --- DUMMY DATA RUTE ---
 const DUMMY_ROUTES = [
@@ -44,10 +75,38 @@ const DUMMY_ROUTES = [
 ];
 
 // --- MOCK DATA HEATMAP ZONES ---
+// Setiap zona sekarang punya "bounds" eksplisit (kotak) yang di-tile berdampingan,
+// supaya hijau/kuning/merah TIDAK saling tumpang-tindih (sebelumnya pakai center+radius
+// yang bikin kotaknya numpuk dan badge shield keliatan nyasar ke zona merah).
+// "center" tetap dipertahankan persis untuk dikirim ke handleZoneClick (lat, lon) —
+// logic fetch/API sama sekali tidak berubah.
+// "badgePosition" khusus untuk naruh icon shield-star supaya jelas di dalam zona
+// aman/waspada masing-masing, dan tidak numpuk dengan marker "posisi kamu saat ini".
 const INITIAL_HEATMAP_ZONES = [
-    { id: 1, center: [-6.2444, 106.7973] as [number, number], radius: 150, color: "#22C55E", info: "Area Aman (Klik untuk cek API ML)" },
-    { id: 2, center: [-6.2455, 106.7985] as [number, number], radius: 120, color: "#EAB308", info: "Area Waspada (Klik untuk cek API ML)" },
-    { id: 3, center: [-6.2465, 106.8000] as [number, number], radius: 180, color: "#EF4444", info: "Area Rawan (Klik untuk cek API ML)" },
+    {
+        id: 1,
+        bounds: [[-6.2451, 106.7965], [-6.2437, 106.7983]] as [[number, number], [number, number]],
+        center: [-6.2444, 106.7973] as [number, number],
+        badgePosition: [-6.2440, 106.7980] as [number, number] | null,
+        color: "#22C55E",
+        info: "Area Aman (Klik untuk cek API ML)",
+    },
+    {
+        id: 2,
+        bounds: [[-6.2451, 106.7983], [-6.2437, 106.8000]] as [[number, number], [number, number]],
+        center: [-6.2444, 106.79915] as [number, number],
+        badgePosition: [-6.2444, 106.79915] as [number, number] | null,
+        color: "#EAB308",
+        info: "Area Waspada (Klik untuk cek API ML)",
+    },
+    {
+        id: 3,
+        bounds: [[-6.2465, 106.7983], [-6.2451, 106.8005]] as [[number, number], [number, number]],
+        center: [-6.2458, 106.7994] as [number, number],
+        badgePosition: null as [number, number] | null,
+        color: "#EF4444",
+        info: "Area Rawan (Klik untuk cek API ML)",
+    },
 ];
 
 interface MapDashboardProps {
@@ -127,6 +186,16 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
         }
     };
 
+    // Multiplier per level risiko, dipakai untuk menurunkan "risk score" masing-masing
+    // rute (B & C) dari satu avg_risk yang dikembalikan API (yang mewakili rute paling aman).
+    // Rute dengan risk_level lebih tinggi otomatis dapet risk score yang lebih tinggi juga,
+    // tetap konsisten arahnya sama urutan "Paling Aman" -> "Alternatif" -> "Waspada".
+    const RISK_LEVEL_MULTIPLIER: { [key: string]: number } = {
+        low: 1,
+        medium: 1.4,
+        high: 1.9,
+    };
+
     const handleSearchRoute = async () => {
         setIsLoading(true);
         try {
@@ -146,11 +215,20 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
 
             if (routeResponse.ok) {
                 const routeData = await routeResponse.json();
-                const updatedRoutes = [...DUMMY_ROUTES];
-                updatedRoutes[0] = {
-                    ...updatedRoutes[0],
-                    reason: `Rute hasil generate AI. Avg Risk Score: ${routeData.avg_risk || 18.94}. ${routeData.mock_note || ''}`
-                };
+                const baseAvgRisk = routeData.avg_risk || 18.94;
+                const mockNote = routeData.mock_note || '';
+
+                // Mapping data server ke SEMUA rute (A, B, C), bukan cuma index 0.
+                // Tiap rute dapet risk score turunan dari baseAvgRisk sesuai risk_level-nya sendiri.
+                const updatedRoutes = DUMMY_ROUTES.map((route) => {
+                    const multiplier = RISK_LEVEL_MULTIPLIER[route.risk_level] ?? 1;
+                    const routeRiskScore = (baseAvgRisk * multiplier).toFixed(2);
+                    return {
+                        ...route,
+                        reason: `Rute hasil generate AI. Avg Risk Score: ${routeRiskScore}. ${mockNote}`,
+                    };
+                });
+
                 setRoutes(updatedRoutes);
                 setIsRouteDrawn(true);
             }
@@ -163,7 +241,22 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     };
 
     return (
-        <main className="min-h-screen w-full bg-[#1A0F18] font-sans text-white pb-10">
+        <main className="herroute-map-dashboard min-h-screen w-full bg-[#1A0F18] text-white pb-10" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {/* Import font Inter supaya konsisten sama desain.
+                Catatan: project ini punya global rule di index.css →
+                `body, html, * { font-family: 'Poppins', sans-serif !important; }`
+                yang bakal ngalahin inline style biasa. Makanya di bawah ini
+                dipakai selector class (.herroute-map-dashboard *) + !important
+                juga, supaya specificity-nya menang dibanding rule global tsb. */}
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+                .herroute-map-dashboard,
+                .herroute-map-dashboard * {
+                    font-family: 'Inter', sans-serif !important;
+                }
+                .custom-current-position-icon, .custom-shield-star-icon { background: transparent !important; border: none !important; }
+            `}</style>
+
             {/* ─── NAVBAR ─── */}
             <nav className="flex h-[103px] w-full items-center px-[120px] bg-[#75003F]">
                 <div className="flex items-center gap-[17px]">
@@ -198,15 +291,24 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                         <div className="mb-[40px] flex items-center gap-4 relative">
                             <div className="relative flex-1 flex flex-col gap-5">
                                 <div className="absolute left-[15px] top-[40px] z-0 h-10 w-[2px] bg-white/20"></div>
+
+                                {/* START POINT — dot/current-location style icon, sesuai desain */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#FA1190" /><circle cx="12" cy="9" r="3" fill="#1E2024" /></svg>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                            <circle cx="12" cy="12" r="9" stroke="#FA1190" strokeWidth="2" fill="#1E2024" />
+                                            <circle cx="12" cy="12" r="4" fill="#FA1190" />
+                                        </svg>
                                     </span>
                                     <input type="text" value={startPoint} onChange={(e) => setStartPoint(e.target.value)} className="w-full rounded-[10px] border border-white/10 bg-[#120B11] px-4 py-[14px] text-[14px] font-semibold text-white outline-none focus:border-[#FA1190]" />
                                 </div>
+
+                                {/* END POINT — classic map-pin icon, sesuai desain */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="5" fill="#FA1190" /><path d="M12 15v6" stroke="#FA1190" strokeWidth="2.5" strokeLinecap="round" /><path d="M7 21h10" stroke="#FA1190" strokeWidth="2.5" strokeLinecap="round" /></svg>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FA1190">
+                                            <path fillRule="evenodd" clipRule="evenodd" d="M11.54 22.351a.76.76 0 00.92 0c.169-.12.706-.512 1.404-1.115a19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.683 2.282c.698.603 1.235.995 1.404 1.115H11.54zM12 13.5a3 3 0 100-6 3 3 0 000 6z" />
+                                        </svg>
                                     </span>
                                     <input type="text" value={endPoint} onChange={(e) => setEndPoint(e.target.value)} className="w-full rounded-[10px] border border-white/10 bg-[#120B11] px-4 py-[14px] text-[14px] font-semibold text-white outline-none focus:border-[#FA1190]" />
                                 </div>
@@ -299,52 +401,55 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                             />
 
-                            {/* ZONA HEATMAP INTERAKTIF (Terhubung ke API /api/ml/risk-indicator) */}
+                            {/* ZONA RISIKO — sekarang KOTAK (Rectangle), sesuai desain. Klik & fetch logic tidak berubah. */}
                             {INITIAL_HEATMAP_ZONES.map((zone) => {
                                 const fetchedData = zoneDataMap[zone.id];
                                 const isLoadingThis = loadingZoneId === zone.id;
 
                                 return (
-                                    <Circle
-                                        key={zone.id}
-                                        center={zone.center}
-                                        radius={zone.radius}
-                                        pathOptions={{ fillColor: zone.color, color: 'transparent', fillOpacity: 0.25 }}
-                                        eventHandlers={{
-                                            click: () => handleZoneClick(zone.id, zone.center[0], zone.center[1]),
-                                        }}
-                                    >
-                                        <Popup>
-                                            <div className="text-black font-sans p-1">
-                                                <p className="font-bold text-[14px] mb-1">Zona Deteksi Risiko</p>
-                                                {isLoadingThis ? (
-                                                    <p className="text-pink-600 animate-pulse text-[12px]">Memproses data...</p>
-                                                ) : fetchedData ? (
-                                                    <div className="text-[12px] space-y-1">
-                                                        <p><b>Cell ID:</b> {fetchedData.cell_id}</p>
-                                                        <p><b>Risk Score:</b> {fetchedData.risk_score}</p>
-                                                        <p><b>Tier:</b> <span className="font-bold uppercase text-green-600">{fetchedData.tier}</span></p>
-                                                        <p className="text-[10px] text-gray-500 italic mt-1">{fetchedData.mock_note}</p>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-[12px] text-gray-600">{zone.info}</p>
-                                                )}
-                                            </div>
-                                        </Popup>
-                                    </Circle>
+                                    <React.Fragment key={zone.id}>
+                                        <Rectangle
+                                            bounds={zone.bounds}
+                                            pathOptions={{ fillColor: zone.color, color: zone.color, weight: 1, opacity: 0.4, fillOpacity: 0.25 }}
+                                            eventHandlers={{
+                                                click: () => handleZoneClick(zone.id, zone.center[0], zone.center[1]),
+                                            }}
+                                        >
+                                            <Popup>
+                                                <div className="text-black font-sans p-1">
+                                                    <p className="font-bold text-[14px] mb-1">Zona Deteksi Risiko</p>
+                                                    {isLoadingThis ? (
+                                                        <p className="text-pink-600 animate-pulse text-[12px]">Memproses data...</p>
+                                                    ) : fetchedData ? (
+                                                        <div className="text-[12px] space-y-1">
+                                                            <p><b>Cell ID:</b> {fetchedData.cell_id}</p>
+                                                            <p><b>Risk Score:</b> {fetchedData.risk_score}</p>
+                                                            <p><b>Tier:</b> <span className="font-bold uppercase text-green-600">{fetchedData.tier}</span></p>
+                                                            <p className="text-[10px] text-gray-500 italic mt-1">{fetchedData.mock_note}</p>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[12px] text-gray-600">{zone.info}</p>
+                                                    )}
+                                                </div>
+                                            </Popup>
+                                        </Rectangle>
+
+                                        {/* Badge shield-star hanya di zona aman/waspada, posisi khusus (badgePosition)
+                                            supaya jelas berada di dalam zonanya sendiri dan tidak numpuk sama zona lain
+                                            atau sama marker "posisi kamu saat ini". */}
+                                        {zone.badgePosition && (
+                                            <Marker
+                                                position={zone.badgePosition}
+                                                icon={shieldStarIcon(zone.color)}
+                                                interactive={false}
+                                            />
+                                        )}
+                                    </React.Fragment>
                                 );
                             })}
 
-                            {isRouteDrawn && (
-                                <Polyline
-                                    positions={routeCoordinates}
-                                    pathOptions={{ color: '#FA1190', weight: 5, opacity: 0.8 }}
-                                />
-                            )}
-
-                            <Marker position={[BLOK_M_LAT, BLOK_M_LON]}>
-                                <Popup>Posisi kamu saat ini</Popup>
-                            </Marker>
+                            {/* Posisi saat ini — custom divIcon bubble + label, bukan default marker biru */}
+                            <Marker position={[BLOK_M_LAT, BLOK_M_LON]} icon={currentPositionIcon} />
                         </MapContainer>
 
                         <div className="absolute bottom-[20px] left-[20px] rounded-[10px] bg-[#1E2024]/95 p-4 shadow-lg backdrop-blur-sm border border-white/10 z-[1000] pointer-events-none">
@@ -353,7 +458,13 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-[#22C55E]"></div> Area Aman</div>
                                 <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-[#EAB308]"></div> Area Waspada</div>
                                 <div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-[#EF4444]"></div> Area Rawan</div>
-                                <div className="flex items-center gap-2"><svg width="12" height="12" viewBox="0 0 24 24" fill="#FA1190"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> Area Safe Place</div>
+                                <div className="flex items-center gap-2">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 2L4 5v6c0 5.25 3.5 9.75 8 11 4.5-1.25 8-5.75 8-11V5l-8-3z" fill="#FA1190" />
+                                        <path d="M12 7.5l1.1 2.25 2.48.36-1.79 1.75.42 2.47L12 13.15l-2.21 1.18.42-2.47-1.79-1.75 2.48-.36L12 7.5z" fill="#FFFFFF" />
+                                    </svg>
+                                    Area Safe Place
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -363,20 +474,28 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                         <h2 className="mb-[24px] text-[20px] font-bold text-white">Pilih Rute Aman</h2>
                         <div className="flex flex-col gap-[16px]">
                             {routes.map((route) => (
-                                <div key={route.id} className="flex flex-col justify-between rounded-[12px] bg-[#120B11] p-[24px] border border-white/5 md:flex-row md:items-center">
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-[12px]">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={route.color}><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
-                                            <h3 className="text-[16px] font-bold" style={{ color: route.color }}>{route.name}</h3>
-                                            <span className="flex items-center gap-1 rounded-full bg-[#3A1F31] px-3 py-1 text-[12px] font-bold text-white">
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#FA1190"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> {route.safe_points_count} Safe Place
+                                <div
+                                    key={route.id}
+                                    className="grid grid-cols-1 md:grid-cols-[1fr_180px] items-center gap-4 rounded-[20px] bg-[#120B11] p-[24px] border border-white/5"
+                                >
+                                    {/* KIRI: judul + badge + alasan — lebar fleksibel, tinggi konsisten */}
+                                    <div className="flex flex-col min-w-0">
+                                        <div className="flex flex-wrap items-center gap-[12px]">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={route.color} className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
+                                            <h3 className="text-[16px] font-bold whitespace-nowrap" style={{ color: route.color }}>{route.name}</h3>
+                                            <span className="flex items-center gap-1 rounded-full bg-[#3A1F31] px-3 py-1 text-[12px] font-bold text-white whitespace-nowrap">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#FA1190" className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> {route.safe_points_count} Safe Place
                                             </span>
                                         </div>
-                                        <p className="mt-[12px] text-[14px] font-medium text-white/80"><span className="font-bold text-white">Alasan:</span> {route.reason}</p>
+                                        <p className="mt-[12px] text-[14px] font-medium text-white/80">
+                                            <span className="font-bold text-white">Alasan:</span> {route.reason}
+                                        </p>
                                     </div>
-                                    <div className="mt-4 flex items-center justify-between md:mt-0 md:ml-6 md:w-[180px]">
-                                        <span className="text-[16px] font-bold text-white">{route.duration_mins} Menit</span>
-                                        <button className="rounded-[20px] bg-[#FA1190] px-[20px] py-[10px] text-[14px] font-bold text-white hover:bg-[#d00e78] transition">Pilih Rute</button>
+
+                                    {/* KANAN: durasi + tombol — lebar fixed, posisi konsisten di semua card */}
+                                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-[180px] shrink-0">
+                                        <span className="text-[16px] font-bold text-white whitespace-nowrap">{route.duration_mins} Menit</span>
+                                        <button className="shrink-0 rounded-[20px] bg-[#FA1190] px-[20px] py-[10px] text-[14px] font-bold text-white hover:bg-[#d00e78] transition whitespace-nowrap">Pilih Rute</button>
                                     </div>
                                 </div>
                             ))}
