@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { LoginPage } from "./login/page";
@@ -22,7 +21,7 @@ export default function App() {
         >
           <LoginPage onLogin={() => setPage("dashboard")} />
         </motion.div>
-      ) : page === "dashboard" ? ( // 4. Ubah kondisi jadi tiga cabang
+      ) : page === "dashboard" ? (
         <motion.div
           key="dashboard"
           initial={{ opacity: 0, x: 40 }}
@@ -30,11 +29,11 @@ export default function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35 }}
         >
-
           <DashboardPage
             onLogout={() => setPage("login")}
             onGoToMap={() => setPage("map")}
-          />        </motion.div>
+          />
+        </motion.div>
       ) : (
         <motion.div
           key="map"
@@ -43,7 +42,8 @@ export default function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35 }}
         >
-          <MapDashboard />
+
+          <MapDashboard onGoToHomepage={() => setPage("dashboard")} />
         </motion.div>
       )}
     </AnimatePresence>
