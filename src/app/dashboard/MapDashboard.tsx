@@ -12,19 +12,46 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- CUSTOM DIV ICONS (khusus untuk marker "posisi saat ini" & badge shield-star) ---
-// Ini murni tampilan (divIcon), tidak menyentuh logic fetch/handler sama sekali.
+
 const currentPositionIcon = L.divIcon({
     className: "custom-current-position-icon",
     html: `
-        <div style="position:relative; width:90px; height:90px; display:flex; align-items:center; justify-content:center;">
-            <div style="position:absolute; inset:0; border-radius:9999px; background:#FA1190; opacity:0.18; filter: blur(2px);"></div>
-            <div style="position:absolute; width:78px; height:78px; border-radius:9999px; background:#FA1190; opacity:0.7;"></div>
-            <span style="position:relative; z-index:2; color:#FFFFFF; font-family:'Inter', sans-serif; font-weight:700; font-size:11px; line-height:13px; text-align:center; width:66px;">Posisi kamu saat ini</span>
+        <div style="position:relative; width:126px; height:150px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="126" height="150" viewBox="0 0 126 150" fill="none" style="position:absolute; top:0; left:0;">
+                <g opacity="0.4" filter="url(#filter0_ddd_191_979)">
+                    <ellipse cx="62.9736" cy="47.522" rx="47.9736" ry="47.522" fill="#FA1190"/>
+                </g>
+                <ellipse opacity="0.7" cx="63.2124" cy="47.2848" rx="38.188" ry="37.6816" fill="#FA1190"/>
+                <ellipse cx="63.4515" cy="47.5236" rx="29.8343" ry="30.2413" fill="#FA1190"/>
+                <defs>
+                    <filter id="filter0_ddd_191_979" x="0" y="0" width="125.947" height="149.044" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                        <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                        <feOffset dy="10"/>
+                        <feGaussianBlur stdDeviation="5"/>
+                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.09 0"/>
+                        <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_191_979"/>
+                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                        <feOffset dy="22"/>
+                        <feGaussianBlur stdDeviation="6.5"/>
+                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.05 0"/>
+                        <feBlend mode="normal" in2="effect1_dropShadow_191_979" result="effect2_dropShadow_191_979"/>
+                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                        <feOffset dy="39"/>
+                        <feGaussianBlur stdDeviation="7.5"/>
+                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.01 0"/>
+                        <feBlend mode="normal" in2="effect2_dropShadow_191_979" result="effect3_dropShadow_191_979"/>
+                        <feBlend mode="normal" in="SourceGraphic" in2="effect3_dropShadow_191_979" result="shape"/>
+                    </filter>
+                </defs>
+            </svg>
+            <div style="position:absolute; top:47px; left:63px; transform:translate(-50%,-50%); z-index:2; width:64px; display:flex; align-items:center; justify-content:center;">
+                <span style="color:#FFFFFF; font-family:'Inter', sans-serif; font-weight:700; font-size:11px; line-height:13px; text-align:center;">Posisi kamu saat ini</span>
+            </div>
         </div>
     `,
-    iconSize: [90, 90],
-    iconAnchor: [45, 45],
+    iconSize: [126, 150],
+    iconAnchor: [63, 47],
 });
 
 const shieldStarIcon = (color: string) =>
@@ -32,7 +59,7 @@ const shieldStarIcon = (color: string) =>
         className: "custom-shield-star-icon",
         html: `
             <div style="position:relative; width:56px; height:56px; display:flex; align-items:center; justify-content:center;">
-                <div style="position:absolute; inset:0; border-radius:9999px; background:${color}; opacity:0.25; filter: blur(4px);"></div>
+                <div style="position:absolute; inset:0; border-radius:9999px; background:#FFFFFF; opacity:0.35; filter: blur(4px);"></div>
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="position:relative; z-index:2;">
                     <path d="M12 2L4 5v6c0 5.25 3.5 9.75 8 11 4.5-1.25 8-5.75 8-11V5l-8-3z" fill="#FA1190"/>
                     <path d="M12 7.5l1.1 2.25 2.48.36-1.79 1.75.42 2.47L12 13.15l-2.21 1.18.42-2.47-1.79-1.75 2.48-.36L12 7.5z" fill="#FFFFFF"/>
@@ -74,14 +101,7 @@ const DUMMY_ROUTES = [
     },
 ];
 
-// --- MOCK DATA HEATMAP ZONES ---
-// Setiap zona sekarang punya "bounds" eksplisit (kotak) yang di-tile berdampingan,
-// supaya hijau/kuning/merah TIDAK saling tumpang-tindih (sebelumnya pakai center+radius
-// yang bikin kotaknya numpuk dan badge shield keliatan nyasar ke zona merah).
-// "center" tetap dipertahankan persis untuk dikirim ke handleZoneClick (lat, lon) —
-// logic fetch/API sama sekali tidak berubah.
-// "badgePosition" khusus untuk naruh icon shield-star supaya jelas di dalam zona
-// aman/waspada masing-masing, dan tidak numpuk dengan marker "posisi kamu saat ini".
+
 const INITIAL_HEATMAP_ZONES = [
     {
         id: 1,
@@ -121,6 +141,9 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     const [routes, setRoutes] = useState(DUMMY_ROUTES);
     const [isLoading, setIsLoading] = useState(false);
     const [isRouteDrawn, setIsRouteDrawn] = useState(false);
+
+
+    const [activeNav, setActiveNav] = useState("Map");
 
     // State untuk nyimpen data hasil fetch API per zona yang diklik
     const [zoneDataMap, setZoneDataMap] = useState<{ [key: number]: any }>({});
@@ -186,10 +209,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
         }
     };
 
-    // Multiplier per level risiko, dipakai untuk menurunkan "risk score" masing-masing
-    // rute (B & C) dari satu avg_risk yang dikembalikan API (yang mewakili rute paling aman).
-    // Rute dengan risk_level lebih tinggi otomatis dapet risk score yang lebih tinggi juga,
-    // tetap konsisten arahnya sama urutan "Paling Aman" -> "Alternatif" -> "Waspada".
+
     const RISK_LEVEL_MULTIPLIER: { [key: string]: number } = {
         low: 1,
         medium: 1.4,
@@ -218,7 +238,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                 const baseAvgRisk = routeData.avg_risk || 18.94;
                 const mockNote = routeData.mock_note || '';
 
-                // Mapping data server ke SEMUA rute (A, B, C), bukan cuma index 0.
+                // Mapping data server ke SEMUA rute (A, B, C)
                 // Tiap rute dapet risk score turunan dari baseAvgRisk sesuai risk_level-nya sendiri.
                 const updatedRoutes = DUMMY_ROUTES.map((route) => {
                     const multiplier = RISK_LEVEL_MULTIPLIER[route.risk_level] ?? 1;
@@ -241,19 +261,9 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     };
 
     return (
-        <main className="herroute-map-dashboard min-h-screen w-full bg-[#1A0F18] text-white pb-10" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* Import font Inter supaya konsisten sama desain.
-                Catatan: project ini punya global rule di index.css →
-                `body, html, * { font-family: 'Poppins', sans-serif !important; }`
-                yang bakal ngalahin inline style biasa. Makanya di bawah ini
-                dipakai selector class (.herroute-map-dashboard *) + !important
-                juga, supaya specificity-nya menang dibanding rule global tsb. */}
+        <main className="min-h-screen w-full bg-[#1A0F18] text-white pb-10">
+
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-                .herroute-map-dashboard,
-                .herroute-map-dashboard * {
-                    font-family: 'Inter', sans-serif !important;
-                }
                 .custom-current-position-icon, .custom-shield-star-icon { background: transparent !important; border: none !important; }
             `}</style>
 
@@ -270,9 +280,15 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                     {["Homepage", "Map", "Report", "Contact"].map((item) => (
                         <button
                             key={item}
-                            onClick={item === "Homepage" ? onGoToHomepage : undefined}
+                            onClick={() => {
+                                if (item === "Homepage") {
+                                    onGoToHomepage?.();
+                                } else {
+                                    setActiveNav(item);
+                                }
+                            }}
                             className="pb-[5px] text-[20px] font-bold leading-[24px] text-[#F9EBF3] transition-all hover:opacity-80"
-                            style={{ borderBottom: item === "Map" ? "3px solid #FA1190" : "3px solid transparent" }}
+                            style={{ borderBottom: activeNav === item ? "3px solid #FA1190" : "3px solid transparent" }}
                         >
                             {item}
                         </button>
@@ -292,18 +308,17 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                             <div className="relative flex-1 flex flex-col gap-5">
                                 <div className="absolute left-[15px] top-[40px] z-0 h-10 w-[2px] bg-white/20"></div>
 
-                                {/* START POINT — dot/current-location style icon, sesuai desain */}
+                                {/* START POINT  */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                            <circle cx="12" cy="12" r="9" stroke="#FA1190" strokeWidth="2" fill="#1E2024" />
-                                            <circle cx="12" cy="12" r="4" fill="#FA1190" />
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M19 18C19 19.657 15.866 21 12 21C8.134 21 5 19.657 5 18C5 16.452 7.737 15.1781 11.25 15.0181V17C11.25 17.41 11.59 17.75 12 17.75C12.41 17.75 12.75 17.41 12.75 17V15.0181C16.263 15.1781 19 16.452 19 18ZM12.75 15.0181V10.9241C14.6 10.5721 16 8.952 16 7C16 4.791 14.209 3 12 3C9.791 3 8 4.791 8 7C8 8.952 9.4 10.5731 11.25 10.9241V15.0181C11.497 15.0071 11.746 15 12 15C12.254 15 12.503 15.0071 12.75 15.0181Z" fill="#FA1190" />
                                         </svg>
                                     </span>
                                     <input type="text" value={startPoint} onChange={(e) => setStartPoint(e.target.value)} className="w-full rounded-[10px] border border-white/10 bg-[#120B11] px-4 py-[14px] text-[14px] font-semibold text-white outline-none focus:border-[#FA1190]" />
                                 </div>
 
-                                {/* END POINT — classic map-pin icon, sesuai desain */}
+                                {/* END POINT  */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#FA1190">
@@ -401,7 +416,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                             />
 
-                            {/* ZONA RISIKO — sekarang KOTAK (Rectangle), sesuai desain. Klik & fetch logic tidak berubah. */}
+                            {/* ZONA RISIKO  */}
                             {INITIAL_HEATMAP_ZONES.map((zone) => {
                                 const fetchedData = zoneDataMap[zone.id];
                                 const isLoadingThis = loadingZoneId === zone.id;
@@ -434,9 +449,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                             </Popup>
                                         </Rectangle>
 
-                                        {/* Badge shield-star hanya di zona aman/waspada, posisi khusus (badgePosition)
-                                            supaya jelas berada di dalam zonanya sendiri dan tidak numpuk sama zona lain
-                                            atau sama marker "posisi kamu saat ini". */}
+
                                         {zone.badgePosition && (
                                             <Marker
                                                 position={zone.badgePosition}
@@ -448,7 +461,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 );
                             })}
 
-                            {/* Posisi saat ini — custom divIcon bubble + label, bukan default marker biru */}
+                            {/* Posisi saat ini */}
                             <Marker position={[BLOK_M_LAT, BLOK_M_LON]} icon={currentPositionIcon} />
                         </MapContainer>
 
@@ -478,7 +491,6 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                     key={route.id}
                                     className="grid grid-cols-1 md:grid-cols-[1fr_180px] items-center gap-4 rounded-[20px] bg-[#120B11] p-[24px] border border-white/5"
                                 >
-                                    {/* KIRI: judul + badge + alasan — lebar fleksibel, tinggi konsisten */}
                                     <div className="flex flex-col min-w-0">
                                         <div className="flex flex-wrap items-center gap-[12px]">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill={route.color} className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
@@ -492,7 +504,6 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                         </p>
                                     </div>
 
-                                    {/* KANAN: durasi + tombol — lebar fixed, posisi konsisten di semua card */}
                                     <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-[180px] shrink-0">
                                         <span className="text-[16px] font-bold text-white whitespace-nowrap">{route.duration_mins} Menit</span>
                                         <button className="shrink-0 rounded-[20px] bg-[#FA1190] px-[20px] py-[10px] text-[14px] font-bold text-white hover:bg-[#d00e78] transition whitespace-nowrap">Pilih Rute</button>
