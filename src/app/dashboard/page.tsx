@@ -5,10 +5,11 @@ import { SOSButton } from "../components/SOSButton";
 import { TrustedContactsPage } from "../trusted-contacts/page";
 import { QuickCallPage } from "../quick-call/page";
 import { AnonymousReportPage } from "../anonymous-report/page";
+import SosPopup from "../pop-up-sos/page";
+import { CallPopup } from "../quick-call/call";
 
-type Modal = "none" | "contacts" | "quickcall" | "report";
+type Modal = "none" | "contacts" | "quickcall" | "report" | "sos" | "calling110";
 
-// 1. Tambahkan onGoToMap di parameter props
 export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; onGoToMap: () => void }) {
   const [modal, setModal] = useState<Modal>("none");
   const [activeNav, setActiveNav] = useState("Homepage");
@@ -22,7 +23,6 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       icon: <Map size={22} style={{ color: "#F7DDEB" }} />,
       title: "Safe Route",
       desc: "Bandingkan rute berdasarkan tingkat resiko",
-      // 2. Ubah onClick dari setActiveNav("Map") menjadi pemanggil onGoToMap
       onClick: onGoToMap,
     },
     {
@@ -62,8 +62,6 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
 
       {/* ── Navbar ── */}
       <nav className="navbar w-full flex items-center px-[120px]">
-
-        {/* Logo + brand */}
         <div className="flex items-center gap-[17px]">
           <div
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[12px] shrink-0"
@@ -77,12 +75,10 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
           </div>
         </div>
 
-        {/* Nav links */}
         <div className="flex items-center gap-[56px] mx-auto">
           {navItems.map((item) => (
             <button
               key={item}
-              // 3. Tambahkan logika: jika item yang diklik adalah "Map", jalankan pindah halaman.
               onClick={() => {
                 if (item === "Map") {
                   onGoToMap();
@@ -101,7 +97,6 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
           ))}
         </div>
 
-        {/* Avatar + logout dropdown */}
         <div className="relative group">
           <button
             className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[16px] shrink-0 hover:opacity-80 transition-opacity"
@@ -138,8 +133,9 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       </div>
 
       {/* ── SOS Button ── */}
-      <div className="flex justify-center mt-[48px]">
-        <SOSButton onActivate={() => { }} />
+      <div className="flex flex-col items-center justify-center mt-[48px]">
+        {/* Langsung setModal("sos") tanpa delay */}
+        <SOSButton onActivate={() => setModal("sos")} />
       </div>
 
       {/* ── Feature Cards ── */}
@@ -158,6 +154,8 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       {modal === "contacts" && <TrustedContactsPage onClose={closeModal} />}
       {modal === "quickcall" && <QuickCallPage onClose={closeModal} />}
       {modal === "report" && <AnonymousReportPage onClose={closeModal} />}
+      {modal === "sos" && <SosPopup onClose={closeModal} onCall={() => setModal("calling110")} />}
+      {modal === "calling110" && <CallPopup onClose={closeModal} />}
     </div>
   );
 }
