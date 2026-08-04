@@ -23,6 +23,11 @@ const currentPositionIcon = L.divIcon({
                 </g>
                 <ellipse opacity="0.7" cx="63.2124" cy="47.2848" rx="38.188" ry="37.6816" fill="#FA1190"/>
                 <ellipse cx="63.4515" cy="47.5236" rx="29.8343" ry="30.2413" fill="#FA1190"/>
+                
+                <!-- Teks dimasukkan LANGSUNG ke dalam SVG -->
+                <text x="63" y="44" fill="white" font-family="sans-serif" font-weight="bold" font-size="9px" text-anchor="middle">Posisi kamu</text>
+                <text x="63" y="55" fill="white" font-family="sans-serif" font-weight="bold" font-size="9px" text-anchor="middle">saat ini</text>
+                
                 <defs>
                     <filter id="filter0_ddd_191_979" x="0" y="0" width="125.947" height="149.044" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
                         <feFlood flood-opacity="0" result="BackgroundImageFix"/>
@@ -45,9 +50,6 @@ const currentPositionIcon = L.divIcon({
                     </filter>
                 </defs>
             </svg>
-            <div style="position:absolute; top:47px; left:63px; transform:translate(-50%,-50%); z-index:2; width:64px; display:flex; align-items:center; justify-content:center;">
-                <span style="color:#FFFFFF; font-family:'Inter', sans-serif; font-weight:700; font-size:11px; line-height:13px; text-align:center;">Posisi kamu saat ini</span>
-            </div>
         </div>
     `,
     iconSize: [126, 150],
@@ -268,14 +270,13 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
             `}</style>
 
             {/* ─── NAVBAR ─── */}
-            <nav className="flex h-[103px] w-full items-center px-[120px] bg-[#75003F]">
-                <div className="flex items-center gap-[17px]">
-                    <div className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#FA1190] text-[12px] font-bold text-[#FCF8FA]">HR</div>
-                    <div className="flex flex-col">
-                        <span className="text-[16px] font-bold leading-[19px] text-[#FCF8FA]">HerRoute</span>
-                        <span className="text-[12px] leading-[15px] text-[#F7DDEB]">Perlindungan & Rute Aman</span>
-                    </div>
+            <nav className="fixed top-0 z-50 flex h-[103px] w-full items-center px-[120px] bg-[#75003F]">                <div className="flex items-center gap-[17px]">
+                <div className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#FA1190] text-[12px] font-bold text-[#FCF8FA]">HR</div>
+                <div className="flex flex-col">
+                    <span className="text-[16px] font-bold leading-[19px] text-[#FCF8FA]">HerRoute</span>
+                    <span className="text-[12px] leading-[15px] text-[#F7DDEB]">Perlindungan & Rute Aman</span>
                 </div>
+            </div>
                 <div className="mx-auto flex items-center gap-[56px]">
                     {["Homepage", "Map", "Report", "Contact"].map((item) => (
                         <button
@@ -298,8 +299,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
             </nav>
 
             {/* ─── MAIN CONTENT ─── */}
-            <div className="mx-auto mt-[40px] flex max-w-[1300px] justify-center gap-[30px] px-[20px]">
-
+            <div className="mx-auto pt-[143px] pb-[40px] flex max-w-[1300px] justify-center gap-[30px] px-[20px]">
                 {/* KOLOM KIRI */}
                 <section className="flex w-[472px] shrink-0 flex-col gap-[30px]">
                     <div className="rounded-[15px] bg-[#1E2024] px-[50px] py-[60px]">
