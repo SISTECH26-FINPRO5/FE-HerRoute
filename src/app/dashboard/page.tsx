@@ -35,7 +35,7 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       icon: <MapPin size={22} style={{ color: "#F7DDEB" }} />,
       title: "Safe Place",
       desc: "Pos polisi, Toko 24 jam, RS terdekat",
-      onClick: () => { },
+      onClick: onGoToMap,
     },
     {
       icon: <Phone size={22} style={{ color: "#F7DDEB" }} />,
@@ -61,19 +61,19 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
     <div className="min-h-screen w-full" style={{ background: "#1A0F18" }}>
 
       {/* ── Navbar ── */}
-      <nav className="navbar w-full flex items-center px-[120px]">
-        <div className="flex items-center gap-[17px]">
-          <div
-            className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[12px] shrink-0"
-            style={{ background: "#FA1190", color: "#FCF8FA" }}
-          >
-            HR
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-[16px] leading-[19px]" style={{ color: "#FCF8FA" }}>HerRoute</span>
-            <span className="text-[12px] leading-[15px]" style={{ color: "#F7DDEB" }}>Perlindungan &amp; Rute Aman</span>
-          </div>
+      {/* Tambahin class fixed, top-0, z-50, bg-color, dan py-4 di sini */}
+      <nav className="navbar fixed top-0 z-50 w-full flex items-center px-[120px] py-4 shadow-sm bg-transparent backdrop-blur-md">        <div className="flex items-center gap-[17px]">
+        <div
+          className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[12px] shrink-0"
+          style={{ background: "#FA1190", color: "#FCF8FA" }}
+        >
+          HR
         </div>
+        <div className="flex flex-col">
+          <span className="font-semibold text-[16px] leading-[19px]" style={{ color: "#FCF8FA" }}>HerRoute</span>
+          <span className="text-[12px] leading-[15px]" style={{ color: "#F7DDEB" }}>Perlindungan &amp; Rute Aman</span>
+        </div>
+      </div>
 
         <div className="flex items-center gap-[56px] mx-auto">
           {navItems.map((item) => (
@@ -120,7 +120,8 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       </nav>
 
       {/* ── Welcome banner ── */}
-      <div className="px-[120px] pt-[69px] flex flex-col gap-[12px]">
+      {/* Ubah pt-[69px] jadi pt-[120px] biar nggak ketutup navbar yang udah fixed */}
+      <div className="px-[120px] pt-[120px] flex flex-col gap-[12px]">
         <h1 className="font-semibold text-[28px] leading-[34px]" style={{ color: "#FCF8FA" }}>
           Selamat Datang, Jane Doe
         </h1>
