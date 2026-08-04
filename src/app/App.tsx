@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { LoginPage } from "./login/page";
 import { DashboardPage } from "./dashboard/page";
-import MapDashboard from "./dashboard/MapDashboard";
+import MapDashboard from "./map/page";
 
 type Page = "login" | "dashboard" | "map";
 
