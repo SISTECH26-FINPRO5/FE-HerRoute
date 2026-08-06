@@ -27,15 +27,43 @@ const loginFeatures = [
 
 export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember]         = useState(false);
-  const [tab, setTab]                   = useState<"login" | "register">("login");
-  const [email, setEmail]               = useState("");
-  const [password, setPassword]         = useState("");
-  const [name, setName]                 = useState("");
+  const [remember, setRemember] = useState(false);
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+
+    if (tab === "register") {
+      console.log("Register belum diimplementasi");
+      return;
+    }
+
+    // --- LOGIN via API ---
+    setIsLoading(true);
+    try {
+      const res = await fetch("https://be-her-route.vercel.app/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Login gagal: ${res.status}`);
+      }
+
+      const data = await res.json();
+      localStorage.setItem("token", data);
+      onLogin();
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Email atau password salah");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,10 +130,10 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             style={{ background: "#FFFFFF", color: "#2F2F2F", boxShadow: "0px 4px 15px rgba(0,0,0,0.11)" }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24">
-              <path fill="#FBBB00" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z"/>
-              <path fill="#518EF8" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987z"/>
-              <path fill="#28B446" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21z"/>
-              <path fill="#F14336" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067z"/>
+              <path fill="#FBBB00" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z" />
+              <path fill="#518EF8" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987z" />
+              <path fill="#28B446" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21z" />
+              <path fill="#F14336" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067z" />
             </svg>
             Login with Google
           </button>
@@ -164,8 +192,8 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             {/* Email */}
             <div className="flex items-center gap-[20px] px-[15px] h-[77px] rounded-[8px]" style={{ background: "#1A0F18" }}>
               <svg width="30" height="24" viewBox="0 0 30 24" fill="none">
-                <rect width="30" height="24" rx="4" fill="#FCF8FA" fillOpacity="0.15"/>
-                <path d="M2 4h26v16H2V4zm0 0l13 9 13-9" stroke="#FCF8FA" strokeWidth="1.5" fill="none"/>
+                <rect width="30" height="24" rx="4" fill="#FCF8FA" fillOpacity="0.15" />
+                <path d="M2 4h26v16H2V4zm0 0l13 9 13-9" stroke="#FCF8FA" strokeWidth="1.5" fill="none" />
               </svg>
               <div className="flex flex-col gap-[3px] flex-1">
                 <label className="text-[16px]" style={{ color: "#FCF8FA" }}>Email</label>
@@ -181,9 +209,9 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             {/* Password */}
             <div className="flex items-center gap-[20px] px-[15px] h-[77px] rounded-[8px]" style={{ background: "#1A0F18" }}>
               <svg width="27" height="27" viewBox="0 0 27 27" fill="none">
-                <circle cx="13.5" cy="10" r="6" stroke="#FCF8FA" strokeWidth="1.5" fill="none"/>
-                <rect x="9" y="14" width="9" height="10" rx="2" fill="#FCF8FA" fillOpacity="0.15" stroke="#FCF8FA" strokeWidth="1.5"/>
-                <circle cx="13.5" cy="19" r="1.5" fill="#FCF8FA"/>
+                <circle cx="13.5" cy="10" r="6" stroke="#FCF8FA" strokeWidth="1.5" fill="none" />
+                <rect x="9" y="14" width="9" height="10" rx="2" fill="#FCF8FA" fillOpacity="0.15" stroke="#FCF8FA" strokeWidth="1.5" />
+                <circle cx="13.5" cy="19" r="1.5" fill="#FCF8FA" />
               </svg>
               <div className="flex flex-col gap-[3px] flex-1">
                 <label className="text-[16px]" style={{ color: "#FCF8FA" }}>Password</label>
@@ -210,7 +238,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
                 >
                   {remember && (
                     <svg width="11" height="8" viewBox="0 0 11 8" fill="none">
-                      <path d="M1 4l3 3 6-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M1 4l3 3 6-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
                 </div>
@@ -222,8 +250,8 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             </div>
 
             {/* Submit */}
-            <button type="submit" className="btn-primary h-[77px] mt-[4px]">
-              {tab === "login" ? "Login" : "Register"}
+            <button type="submit" className="btn-primary h-[77px] mt-[4px]" disabled={isLoading}>
+              {isLoading ? "Loading..." : tab === "login" ? "Login" : "Register"}
             </button>
 
             {/* Switch tab */}
