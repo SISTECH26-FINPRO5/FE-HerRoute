@@ -56,7 +56,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
       }
 
       const data = await res.json();
-      localStorage.setItem("token", data);
+      localStorage.setItem("token", data.session.access_token);
       onLogin();
     } catch (err) {
       console.error("Login error:", err);

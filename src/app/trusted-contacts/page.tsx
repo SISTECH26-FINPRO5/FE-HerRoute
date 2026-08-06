@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Plus, PhoneCall, Trash2 } from "lucide-react";
 import { ModalWrapper, CloseBtn } from "../components/ModalWrapper";
+import CallScreen from "./call"; // Jembatan penghubung CallScreen
 
 const API_BASE = "https://be-her-route.vercel.app";
 
 interface Contact {
   id: number;
   name: string;
-  relation: string;
   phone: string;
 }
 
@@ -25,16 +25,15 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<ViewState>("list");
   const [contacts, setContacts] = useState<Contact[]>([]);
 
+  // State untuk menampung data kontak saat layar telepon dimunculkan
+  const [callingContact, setCallingContact] = useState<Contact | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Form State
-  const [formData, setFormData] = useState({ name: "", relation: "", phone: "" });
-
-  // Delete State
+  const [formData, setFormData] = useState({ name: "", phone: "" });
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
 
-  // --- FETCH DATA DARI API ---
   const fetchContacts = async () => {
     setIsLoading(true);
     try {
@@ -43,15 +42,15 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`GET gagal: ${res.status}`);
-      const data = await res.json();
-      // Map response API ke bentuk Contact lokal
-      const mapped: Contact[] = (data ?? []).map((item: { id: number; name: string; phone_number: string }) => ({
-        id: item.id,
-        name: item.name,
-        relation: "",
-        phone: item.phone_number,
-      }));
-      setContacts(mapped);
+      const responseJson = await res.json();
+      const contactsArray = responseJson.data || [];
+      setContacts(
+        contactsArray.map((item: { id: number; name: string; phone_number: string }) => ({
+          id: item.id,
+          name: item.name,
+          phone: item.phone_number,
+        }))
+      );
     } catch (err) {
       console.error("Gagal memuat kontak:", err);
       alert("Gagal memuat kontak. Silakan coba lagi.");
@@ -60,11 +59,9 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
     }
   };
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchContacts(); }, []);
 
-  // --- ADD KONTAK VIA API ---
   const handleAddContact = async () => {
     setIsProcessing(true);
     try {
@@ -78,8 +75,7 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
       });
       if (!res.ok) throw new Error(`POST gagal: ${res.status}`);
 
-      // Reset form & kembali ke list, lalu refresh data
-      setFormData({ name: "", relation: "", phone: "" });
+      setFormData({ name: "", phone: "" });
       setView("list");
       await fetchContacts();
     } catch (err) {
@@ -90,7 +86,6 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // --- DELETE KONTAK VIA API ---
   const handleDeleteContact = async () => {
     if (!contactToDelete) return;
     setIsProcessing(true);
@@ -112,7 +107,6 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // Utility inisial nama
   const getInitial = (name: string) => {
     if (!name) return "?";
     return name
@@ -122,6 +116,20 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
       .substring(0, 2)
       .toUpperCase();
   };
+
+  // ─── RENDER: CALL SCREEN ───
+  if (callingContact) {
+    return (
+      <CallScreen
+        name={callingContact.name}
+        phone={callingContact.phone}
+        onClose={() => {
+          // menutup total modal Trusted Contacts, dan balik ke dashboard
+          onClose();
+        }}
+      />
+    );
+  }
 
   // ─── RENDER: CONFIRM DELETE ───
   if (view === "confirm-delete") {
@@ -216,18 +224,6 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-[14px] text-white">Hubungan</label>
-              <input
-                type="text"
-                value={formData.relation}
-                onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
-                placeholder="Contoh: Kakak, Sahabat"
-                className="w-full rounded-[10px] px-4 py-[14px] text-[14px] text-white outline-none"
-                style={{ background: "#1A0F18", border: "1px solid rgba(255,255,255,0.05)" }}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
               <label className="text-[14px] text-white">Nomor Telepon</label>
               <input
                 type="text"
@@ -296,12 +292,14 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
                   </div>
                   <div className="flex flex-col gap-[5px]">
                     <p className="font-semibold text-[16px] leading-[19px] text-white">{c.name}</p>
-                    <p className="text-[10px] leading-[12px] text-white/70">{c.relation} · {c.phone}</p>
+                    <p className="text-[10px] leading-[12px] text-white/70">{c.phone}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-[14px]">
+                  {/* Tombol Call yang sekarang memiliki onClick */}
                   <button
+                    onClick={() => setCallingContact(c)}
                     className="w-[35px] h-[35px] rounded-full flex items-center justify-center hover:opacity-75 transition-opacity"
                     style={{ background: "#2A0017", border: "1px solid #F7DDEB", color: "#F9A8D4" }}
                     aria-label="Call"

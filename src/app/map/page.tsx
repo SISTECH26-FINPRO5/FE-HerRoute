@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 // IMPORT LEAFLET COMPONENTS
-import { MapContainer, TileLayer, Marker, Popup, Rectangle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Rectangle, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -72,6 +72,36 @@ const shieldStarIcon = (color: string) =>
         iconAnchor: [28, 28],
     });
 
+// ─── ARROW ICON UNTUK NUNJUKIN ARAH RUTE ───
+// Dipakai di tiap segmen garis rute, dirotasi sesuai bearing segmen tsb.
+const routeArrowIcon = (color: string, angleDeg: number) =>
+    L.divIcon({
+        className: "custom-route-arrow-icon",
+        html: `
+            <div style="width:22px; height:22px; transform: rotate(${angleDeg}deg); transform-origin: center;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="11" fill="#120B11" fill-opacity="0.55"/>
+                    <path d="M12 5L18 15H6L12 5Z" fill="${color}" stroke="#FCF8FA" stroke-width="1"/>
+                </svg>
+            </div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+    });
+
+// Hitung bearing (derajat, 0 = utara) antara 2 titik lat/lon, buat rotasi arrow icon
+function computeBearing(from: [number, number], to: [number, number]): number {
+    const [lat1, lon1] = from.map((v) => (v * Math.PI) / 180);
+    const [lat2, lon2] = to.map((v) => (v * Math.PI) / 180);
+    const dLon = lon2 - lon1;
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x =
+        Math.cos(lat1) * Math.sin(lat2) -
+        Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    const bearingRad = Math.atan2(y, x);
+    return ((bearingRad * 180) / Math.PI + 360) % 360;
+}
+
 // --- DUMMY DATA RUTE ---
 const DUMMY_ROUTES = [
     {
@@ -82,6 +112,15 @@ const DUMMY_ROUTES = [
         safe_points_count: 2,
         reason: "Jalur utama, penerangan baik, melewati 2 safe place.",
         color: "#22C55E",
+        // Waypoint skematik (bukan hasil real routing engine, lihat catatan di bawah).
+        // Sengaja dijaga lat > -6.2451 supaya gak pernah masuk rectangle Area Rawan
+        // (bounds zona rawan: lat -6.2465 s/d -6.2451).
+        waypoints: [
+            [-6.2444, 106.7973],
+            [-6.2446, 106.7982],
+            [-6.2447, 106.7990],
+            [-6.2450, 106.7995],
+        ] as [number, number][],
     },
     {
         id: "route_b",
@@ -89,8 +128,15 @@ const DUMMY_ROUTES = [
         risk_level: "medium",
         duration_mins: 14,
         safe_points_count: 1,
-        reason: "Rute lebih pendek, tapi melewati 1 area waspada.",
+        reason: "Rute lebih pendek, tapi menyerempet ujung area waspada.",
         color: "#EAB308",
+        // Nyerempet dikit ke tepi zona rawan (lat sempat nyentuh -6.2452)
+        waypoints: [
+            [-6.2444, 106.7973],
+            [-6.2448, 106.7985],
+            [-6.2452, 106.7993],
+            [-6.2450, 106.7995],
+        ] as [number, number][],
     },
     {
         id: "route_c",
@@ -100,6 +146,13 @@ const DUMMY_ROUTES = [
         safe_points_count: 0,
         reason: "Melewati area dengan laporan rawan tinggi, hindari di malam hari.",
         color: "#EF4444",
+        // Motong lewat tengah rectangle rawan (lat -6.2460, di dalam -6.2465 s/d -6.2451)
+        waypoints: [
+            [-6.2444, 106.7973],
+            [-6.2452, 106.7988],
+            [-6.2460, 106.7998],
+            [-6.2450, 106.7995],
+        ] as [number, number][],
     },
 ];
 
@@ -144,6 +197,8 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isRouteDrawn, setIsRouteDrawn] = useState(false);
 
+    // Rute yang lagi ditampilin garisnya di map. Default: rute paling aman begitu hasil rute muncul.
+    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
     const [activeNav, setActiveNav] = useState("Map");
 
@@ -153,13 +208,6 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
 
     const BLOK_M_LAT = -6.2444;
     const BLOK_M_LON = 106.7973;
-
-    const routeCoordinates: [number, number][] = [
-        [-6.2444, 106.7973],
-        [-6.2450, 106.7980],
-        [-6.2458, 106.7990],
-        [-6.2460, 106.8000],
-    ];
 
     useEffect(() => {
         const fetchSafePlaces = async () => {
@@ -224,8 +272,8 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
             const payload = {
                 start_lat: BLOK_M_LAT,
                 start_lon: BLOK_M_LON,
-                end_lat: -6.2460,
-                end_lon: 106.8000,
+                end_lat: -6.2450,
+                end_lon: 106.7995,
                 mode: "safe"
             };
 
@@ -242,6 +290,9 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
 
                 // Mapping data server ke SEMUA rute (A, B, C)
                 // Tiap rute dapet risk score turunan dari baseAvgRisk sesuai risk_level-nya sendiri.
+                // CATATAN: API ml/safe-route cuma ngasih avg_risk (angka), BUKAN geometry rute.
+                // Jadi garis di map tetap pakai waypoint skematik (routes[].waypoints) yang
+                // udah didefinisiin di frontend, independen dari model risk Chicago ini.
                 const updatedRoutes = DUMMY_ROUTES.map((route) => {
                     const multiplier = RISK_LEVEL_MULTIPLIER[route.risk_level] ?? 1;
                     const routeRiskScore = (baseAvgRisk * multiplier).toFixed(2);
@@ -253,20 +304,40 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
 
                 setRoutes(updatedRoutes);
                 setIsRouteDrawn(true);
+                // otomatis tampilin rute paling aman begitu hasil pencarian muncul
+                setSelectedRouteId(updatedRoutes[0].id);
             }
         } catch (error) {
             console.error("Gagal mencari rute:", error);
             setIsRouteDrawn(true);
+            setSelectedRouteId(DUMMY_ROUTES[0].id);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const activeRoute = useMemo(
+        () => routes.find((r) => r.id === selectedRouteId) ?? null,
+        [routes, selectedRouteId]
+    );
+
+    // Titik tengah tiap segmen + bearing-nya, buat naro arrow icon di sepanjang garis
+    const arrowMarkers = useMemo(() => {
+        if (!activeRoute) return [];
+        const pts = activeRoute.waypoints;
+        return pts.slice(0, -1).map((p, i) => {
+            const next = pts[i + 1];
+            const mid: [number, number] = [(p[0] + next[0]) / 2, (p[1] + next[1]) / 2];
+            const angle = computeBearing(p, next);
+            return { position: mid, angle, key: `${activeRoute.id}_arrow_${i}` };
+        });
+    }, [activeRoute]);
+
     return (
         <main className="min-h-screen w-full bg-[#1A0F18] text-white pb-10">
 
             <style>{`
-                .custom-current-position-icon, .custom-shield-star-icon { background: transparent !important; border: none !important; }
+                .custom-current-position-icon, .custom-shield-star-icon, .custom-route-arrow-icon { background: transparent !important; border: none !important; }
             `}</style>
 
             {/* ─── NAVBAR ─── */}
@@ -461,6 +532,29 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 );
                             })}
 
+                            {/* GARIS RUTE + ARROW (skematik, lihat catatan di handleSearchRoute) */}
+                            {isRouteDrawn && activeRoute && (
+                                <React.Fragment>
+                                    <Polyline
+                                        positions={activeRoute.waypoints}
+                                        pathOptions={{
+                                            color: activeRoute.color,
+                                            weight: 5,
+                                            opacity: 0.9,
+                                            dashArray: activeRoute.risk_level === "high" ? "8 8" : undefined,
+                                        }}
+                                    />
+                                    {arrowMarkers.map((a) => (
+                                        <Marker
+                                            key={a.key}
+                                            position={a.position}
+                                            icon={routeArrowIcon(activeRoute.color, a.angle)}
+                                            interactive={false}
+                                        />
+                                    ))}
+                                </React.Fragment>
+                            )}
+
                             {/* Posisi saat ini */}
                             <Marker position={[BLOK_M_LAT, BLOK_M_LON]} icon={currentPositionIcon} />
                         </MapContainer>
@@ -478,6 +572,12 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                     </svg>
                                     Area Safe Place
                                 </div>
+                                {isRouteDrawn && activeRoute && (
+                                    <div className="flex items-center gap-2 pt-1 mt-1 border-t border-white/10">
+                                        <div className="h-[3px] w-4 rounded-full" style={{ background: activeRoute.color }}></div>
+                                        Rute Terpilih
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -486,30 +586,43 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                     <div className="rounded-[15px] bg-[#1E2024] p-[40px]">
                         <h2 className="mb-[24px] text-[20px] font-bold text-white">Pilih Rute Aman</h2>
                         <div className="flex flex-col gap-[16px]">
-                            {routes.map((route) => (
-                                <div
-                                    key={route.id}
-                                    className="grid grid-cols-1 md:grid-cols-[1fr_180px] items-center gap-4 rounded-[20px] bg-[#120B11] p-[24px] border border-white/5"
-                                >
-                                    <div className="flex flex-col min-w-0">
-                                        <div className="flex flex-wrap items-center gap-[12px]">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill={route.color} className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
-                                            <h3 className="text-[16px] font-bold whitespace-nowrap" style={{ color: route.color }}>{route.name}</h3>
-                                            <span className="flex items-center gap-1 rounded-full bg-[#3A1F31] px-3 py-1 text-[12px] font-bold text-white whitespace-nowrap">
-                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#FA1190" className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> {route.safe_points_count} Safe Place
-                                            </span>
+                            {routes.map((route) => {
+                                const isSelected = selectedRouteId === route.id;
+                                return (
+                                    <div
+                                        key={route.id}
+                                        className="grid grid-cols-1 md:grid-cols-[1fr_180px] items-center gap-4 rounded-[20px] bg-[#120B11] p-[24px] transition"
+                                        style={{ border: isSelected ? `1.5px solid ${route.color}` : "1px solid rgba(255,255,255,0.05)" }}
+                                    >
+                                        <div className="flex flex-col min-w-0">
+                                            <div className="flex flex-wrap items-center gap-[12px]">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill={route.color} className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg>
+                                                <h3 className="text-[16px] font-bold whitespace-nowrap" style={{ color: route.color }}>{route.name}</h3>
+                                                <span className="flex items-center gap-1 rounded-full bg-[#3A1F31] px-3 py-1 text-[12px] font-bold text-white whitespace-nowrap">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#FA1190" className="shrink-0"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" /></svg> {route.safe_points_count} Safe Place
+                                                </span>
+                                            </div>
+                                            <p className="mt-[12px] text-[14px] font-medium text-white/80">
+                                                <span className="font-bold text-white">Alasan:</span> {route.reason}
+                                            </p>
                                         </div>
-                                        <p className="mt-[12px] text-[14px] font-medium text-white/80">
-                                            <span className="font-bold text-white">Alasan:</span> {route.reason}
-                                        </p>
-                                    </div>
 
-                                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-[180px] shrink-0">
-                                        <span className="text-[16px] font-bold text-white whitespace-nowrap">{route.duration_mins} Menit</span>
-                                        <button className="shrink-0 rounded-[20px] bg-[#FA1190] px-[20px] py-[10px] text-[14px] font-bold text-white hover:bg-[#d00e78] transition whitespace-nowrap">Pilih Rute</button>
+                                        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-[180px] shrink-0">
+                                            <span className="text-[16px] font-bold text-white whitespace-nowrap">{route.duration_mins} Menit</span>
+                                            <button
+                                                onClick={() => {
+                                                    setIsRouteDrawn(true);
+                                                    setSelectedRouteId(route.id);
+                                                }}
+                                                className="shrink-0 rounded-[20px] px-[20px] py-[10px] text-[14px] font-bold text-white transition whitespace-nowrap"
+                                                style={{ background: isSelected ? route.color : "#FA1190" }}
+                                            >
+                                                {isSelected ? "Ditampilkan" : "Pilih Rute"}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </section>
