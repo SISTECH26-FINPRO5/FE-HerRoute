@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Plus, PhoneCall, Trash2 } from "lucide-react";
 import { ModalWrapper, CloseBtn } from "../components/ModalWrapper";
 
+const API_BASE = "https://be-her-route.vercel.app";
+
 interface Contact {
-  id: string | number;
+  id: number;
   name: string;
   relation: string;
   phone: string;
@@ -11,15 +13,17 @@ interface Contact {
 
 type ViewState = "list" | "add-form" | "confirm-add" | "confirm-delete";
 
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem("token") || "";
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
 export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
   const [view, setView] = useState<ViewState>("list");
-
-  // Menggunakan data awal sesuai desain agar tidak kosong
-  const [contacts, setContacts] = useState<Contact[]>([
-    { id: "1", name: "Mama", relation: "Orang Tua", phone: "0812-3456-7890" },
-    { id: "2", name: "Kakak Perempuan", relation: "Saudara", phone: "0813-9876-5432" },
-    { id: "3", name: "Sahabat", relation: "Teman", phone: "0857-1234-5678" },
-  ]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -30,52 +34,82 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
   // Delete State
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
 
-  // --- SIMULASI FETCH DATA ---
-  const fetchContacts = () => {
+  // --- FETCH DATA DARI API ---
+  const fetchContacts = async () => {
     setIsLoading(true);
-    // Simulasi loading 0.5 detik
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${API_BASE}/trusted-contacts`, {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`GET gagal: ${res.status}`);
+      const data = await res.json();
+      // Map response API ke bentuk Contact lokal
+      const mapped: Contact[] = (data ?? []).map((item: { id: number; name: string; phone_number: string }) => ({
+        id: item.id,
+        name: item.name,
+        relation: "",
+        phone: item.phone_number,
+      }));
+      setContacts(mapped);
+    } catch (err) {
+      console.error("Gagal memuat kontak:", err);
+      alert("Gagal memuat kontak. Silakan coba lagi.");
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   useEffect(() => {
     fetchContacts();
   }, []);
 
-  // --- SIMULASI ADD DATA LOKAL ---
-  const handleAddContact = () => {
+  // --- ADD KONTAK VIA API ---
+  const handleAddContact = async () => {
     setIsProcessing(true);
+    try {
+      const res = await fetch(`${API_BASE}/trusted-contacts`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: formData.name,
+          phone_number: formData.phone,
+        }),
+      });
+      if (!res.ok) throw new Error(`POST gagal: ${res.status}`);
 
-    // Simulasi jeda jaringan
-    setTimeout(() => {
-      const newContact = {
-        id: Math.random().toString(), // Bikin ID acak
-        name: formData.name,
-        relation: formData.relation || "Kontak",
-        phone: formData.phone,
-      };
-
-      setContacts([...contacts, newContact]);
+      // Reset form & kembali ke list, lalu refresh data
       setFormData({ name: "", relation: "", phone: "" });
       setView("list");
+      await fetchContacts();
+    } catch (err) {
+      console.error("Gagal menambah kontak:", err);
+      alert("Gagal menambah kontak. Silakan coba lagi.");
+    } finally {
       setIsProcessing(false);
-    }, 600);
+    }
   };
 
-  // --- SIMULASI DELETE DATA LOKAL ---
-  const handleDeleteContact = () => {
+  // --- DELETE KONTAK VIA API ---
+  const handleDeleteContact = async () => {
     if (!contactToDelete) return;
     setIsProcessing(true);
+    try {
+      const res = await fetch(`${API_BASE}/trusted-contacts/${contactToDelete.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`DELETE gagal: ${res.status}`);
 
-    // Simulasi jeda jaringan
-    setTimeout(() => {
-      const updatedContacts = contacts.filter((c) => c.id !== contactToDelete.id);
-      setContacts(updatedContacts);
       setContactToDelete(null);
       setView("list");
+      await fetchContacts();
+    } catch (err) {
+      console.error("Gagal menghapus kontak:", err);
+      alert("Gagal menghapus kontak. Silakan coba lagi.");
+    } finally {
       setIsProcessing(false);
-    }, 600);
+    }
   };
 
   // Utility inisial nama
