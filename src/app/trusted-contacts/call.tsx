@@ -1,46 +1,41 @@
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
-import { ModalWrapper, CloseBtn } from "../components/ModalWrapper";
+import { Mic, Phone, Volume2, X } from "lucide-react";
 
-// Interface disesuaikan dengan asumsi response API
-interface Contact {
-    id?: string | number;
-    initial: string;
+interface CallScreenProps {
     name: string;
-    role: string;
+    phone: string;
+    onClose: () => void;
 }
 
-export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+export default function CallScreen({ name, phone, onClose }: CallScreenProps) {
+    const initial = name.charAt(0).toUpperCase();
+    const [seconds, setSeconds] = useState(1);
 
-    // Mengambil data dari API saat komponen di-render
+    // Timer logic: mulai dari 1, berhenti saat mencapai 5
     useEffect(() => {
-        const fetchContacts = async () => {
-            try {
-                // Sesuaikan base URL API ini dengan milik kelompokmu
-                const response = await fetch("https://be-her-route.vercel.app/api/trusted-contacts");
-                if (response.ok) {
-                    const data = await response.json();
-                    // Pastikan struktur data dari API di-map sesuai kebutuhan komponen
-                    setContacts(data);
-                } else {
-                    console.error("Gagal mengambil data kontak");
+        const interval = setInterval(() => {
+            setSeconds((prev) => {
+                if (prev >= 5) {
+                    clearInterval(interval);
+                    return 5;
                 }
-            } catch (error) {
-                console.error("Terjadi kesalahan:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchContacts();
+                return prev + 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
     }, []);
 
+    const formatTime = (sec: number) => `00:0${sec}`;
+
     return (
-        <ModalWrapper onClose={onClose}>
-            <div className="w-[631px] min-h-[608px] relative px-[51px] pt-[43px] pb-[60px]">
-                <CloseBtn onClose={onClose} />
+        // PERUBAHAN DI SINI: Menggunakan 'fixed inset-0 z-50' agar menjadi pop-up melayang di atas segalanya
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+
+            <div className="w-[631px] min-h-[608px] relative px-[51px] pt-[43px] pb-[60px] bg-[#1a000e] rounded-3xl border border-[#FA1190]/20 shadow-2xl">
+
+                <button onClick={onClose} className="absolute top-[43px] right-[51px] text-[#FA1190] hover:opacity-75 transition-opacity">
+                    <X size={24} />
+                </button>
 
                 <p className="font-light text-[16px] tracking-[0.15em] mt-[10px]" style={{ color: "#FA1190" }}>
                     TRUSTED CONTACTS
@@ -49,67 +44,34 @@ export function TrustedContactsPage({ onClose }: { onClose: () => void }) {
                     Kontak Tepercaya
                 </h2>
                 <p className="text-[12px] leading-[15px] mt-[10px]" style={{ color: "#F7DDEB" }}>
-                    Kontak ini menerima lokasi &amp; pesan darurat saat kamu menekan tombol SOS.
+                    Kontak ini menerima lokasi & pesan darurat saat kamu menekan tombol SOS.
                 </p>
 
-                <div className="mt-[32px] flex flex-col min-h-[250px]">
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-full mt-10">
-                            <span className="text-[#FA1190] animate-pulse">Memuat kontak...</span>
-                        </div>
-                    ) : contacts.length > 0 ? (
-                        contacts.map((c, index) => (
-                            <div key={c.id || index} className="contact-row flex items-center justify-between py-[14px]">
-                                <div className="flex items-center gap-[10px]">
-                                    <div
-                                        className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[16px] shrink-0"
-                                        style={{ background: "#FA1190", color: "#FCF8FA" }}
-                                    >
-                                        {c.initial || c.name.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="flex flex-col gap-[5px]">
-                                        <p className="font-semibold text-[16px] leading-[19px] text-white">{c.name}</p>
-                                        <p className="text-[10px] leading-[12px] text-white/70">{c.role}</p>
-                                    </div>
-                                </div>
+                <div className="flex flex-col items-center justify-center mt-[80px]">
+                    <div className="w-[120px] h-[120px] rounded-full flex items-center justify-center text-[48px] font-semibold mb-[20px]" style={{ background: "#FA1190", color: "#FCF8FA" }}>
+                        {initial}
+                    </div>
 
-                                <div className="flex items-center gap-[14px]">
-                                    {/* Tombol Call dengan material-symbols:call */}
-                                    <button
-                                        className="w-[35px] h-[35px] rounded-full flex items-center justify-center hover:opacity-75 transition-opacity"
-                                        style={{ background: "#2A0017", border: "1px solid #F7DDEB", color: "#F9A8D4" }}
-                                        aria-label="Call Contact"
-                                    >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24c1.12.37 2.33.57 3.57.57c.55 0 1 .45 1 1V20c0 .55-.45 1-1 1c-9.39 0-17-7.61-17-17c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1c0 1.25.2 2.45.57 3.57c.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                                        </svg>
-                                    </button>
+                    <h3 className="text-[24px] font-semibold text-white mb-[8px]">{name}</h3>
 
-                                    {/* Tombol Delete dengan mdi:bin */}
-                                    <button
-                                        className="w-[35px] h-[35px] rounded-full flex items-center justify-center hover:opacity-75 transition-opacity"
-                                        style={{ background: "#2A0017", border: "1px solid #F7DDEB", color: "#F9A8D4" }}
-                                        aria-label="Delete Contact"
-                                    >
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9M7 6h10v13H7V6m2 2v9h2V8H9m4 0v9h2V8h-2Z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="flex justify-center items-center h-full mt-10">
-                            <span className="text-white/50 text-sm">Belum ada kontak tepercaya.</span>
-                        </div>
-                    )}
+                    <p className="text-[#F7DDEB] text-[16px] mb-[4px] font-light">Tersambung</p>
+                    <p className="text-white text-[16px] tracking-widest">{formatTime(seconds)}</p>
+
+                    <div className="flex items-center gap-[30px] mt-[60px]">
+                        <button className="w-[60px] h-[60px] rounded-full flex items-center justify-center transition-opacity hover:opacity-80" style={{ background: "#4a0029", color: "white" }}>
+                            <Mic size={24} />
+                        </button>
+
+                        <button onClick={onClose} className="w-[80px] h-[80px] rounded-full flex items-center justify-center bg-[#FF0000] transition-transform hover:scale-105" style={{ color: "white", boxShadow: "0 4px 14px 0 rgba(255, 0, 0, 0.39)" }}>
+                            <Phone size={32} fill="currentColor" />
+                        </button>
+
+                        <button className="w-[60px] h-[60px] rounded-full flex items-center justify-center transition-opacity hover:opacity-80" style={{ background: "#4a0029", color: "white" }}>
+                            <Volume2 size={24} />
+                        </button>
+                    </div>
                 </div>
-
-                <button className="btn-dashed mt-[22px] w-full h-[50px] flex items-center justify-center gap-[6px]">
-                    <Plus size={20} />
-                    Tambah Kontak
-                </button>
             </div>
-        </ModalWrapper>
+        </div>
     );
 }
