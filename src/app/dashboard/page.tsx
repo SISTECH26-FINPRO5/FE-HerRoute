@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Map, FileWarning, Users, Phone, MapPin, AlertTriangle } from "lucide-react";
 import { FeatureCard } from "../components/FeatureCard";
 import { SOSButton } from "../components/SOSButton";
@@ -7,6 +7,8 @@ import { QuickCallPage } from "../quick-call/page";
 import { AnonymousReportPage } from "../anonymous-report/page";
 import SosPopup from "../pop-up-sos/page";
 import { CallPopup } from "../quick-call/call";
+import logo from "@/imports/logo.png";
+import alarmSound from "@/imports/alarm.mp3";
 
 type Modal = "none" | "contacts" | "quickcall" | "report" | "sos" | "calling110";
 
@@ -14,7 +16,41 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
   const [modal, setModal] = useState<Modal>("none");
   const [activeNav, setActiveNav] = useState("Homepage");
 
-  const closeModal = () => setModal("none");
+  // Ref buat nyimpen instance audio alarm
+  const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Inisialisasi audio sekali aja saat komponen mount
+    alarmAudioRef.current = new Audio(alarmSound);
+    alarmAudioRef.current.loop = true; // bunyi berulang selama SOS aktif, hapus kalau nggak mau loop
+
+    return () => {
+      // Cleanup saat komponen unmount
+      alarmAudioRef.current?.pause();
+      alarmAudioRef.current = null;
+    };
+  }, []);
+
+  const playAlarm = () => {
+    if (alarmAudioRef.current) {
+      alarmAudioRef.current.currentTime = 0;
+      alarmAudioRef.current.play().catch((err) => {
+        console.error("Gagal memutar alarm:", err);
+      });
+    }
+  };
+
+  const stopAlarm = () => {
+    if (alarmAudioRef.current) {
+      alarmAudioRef.current.pause();
+      alarmAudioRef.current.currentTime = 0;
+    }
+  };
+
+  const closeModal = () => {
+    setModal("none");
+    stopAlarm(); // hentikan alarm saat modal ditutup
+  };
 
   const navItems = ["Homepage", "Map", "Report", "Contact"];
 
@@ -61,14 +97,8 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
     <div className="min-h-screen w-full" style={{ background: "#1A0F18" }}>
 
       {/* ── Navbar ── */}
-      {/* Tambahin class fixed, top-0, z-50, bg-color, dan py-4 di sini */}
       <nav className="navbar fixed top-0 z-50 w-full flex items-center px-[120px] py-4 shadow-sm bg-transparent backdrop-blur-md">        <div className="flex items-center gap-[17px]">
-        <div
-          className="w-[50px] h-[50px] rounded-full flex items-center justify-center font-semibold text-[12px] shrink-0"
-          style={{ background: "#FA1190", color: "#FCF8FA" }}
-        >
-          HR
-        </div>
+        <img src={logo} alt="HerRoute logo" className="w-[50px] h-[50px] rounded-full object-cover shrink-0" />
         <div className="flex flex-col">
           <span className="font-semibold text-[16px] leading-[19px]" style={{ color: "#FCF8FA" }}>HerRoute</span>
           <span className="text-[12px] leading-[15px]" style={{ color: "#F7DDEB" }}>Perlindungan &amp; Rute Aman</span>
@@ -120,7 +150,6 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       </nav>
 
       {/* ── Welcome banner ── */}
-      {/* Ubah pt-[69px] jadi pt-[120px] biar nggak ketutup navbar yang udah fixed */}
       <div className="px-[120px] pt-[120px] flex flex-col gap-[12px]">
         <h1 className="font-semibold text-[28px] leading-[34px]" style={{ color: "#FCF8FA" }}>
           Selamat Datang, Jane Doe
@@ -135,8 +164,13 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
 
       {/* ── SOS Button ── */}
       <div className="flex flex-col items-center justify-center mt-[48px]">
-        {/* Langsung setModal("sos") tanpa delay */}
-        <SOSButton onActivate={() => setModal("sos")} />
+        {/* Bunyikan alarm sekaligus buka modal SOS */}
+        <SOSButton
+          onActivate={() => {
+            setModal("sos");
+            playAlarm();
+          }}
+        />
       </div>
 
       {/* ── Feature Cards ── */}
@@ -155,7 +189,7 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
       {modal === "contacts" && <TrustedContactsPage onClose={closeModal} />}
       {modal === "quickcall" && <QuickCallPage onClose={closeModal} />}
       {modal === "report" && <AnonymousReportPage onClose={closeModal} />}
-      {modal === "sos" && <SosPopup onClose={closeModal} onCall={() => setModal("calling110")} />}
+      {modal === "sos" && <SosPopup onClose={closeModal} onCall={() => { stopAlarm(); setModal("calling110"); }} />}
       {modal === "calling110" && <CallPopup onClose={closeModal} />}
     </div>
   );

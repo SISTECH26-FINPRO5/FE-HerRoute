@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Shield, FileWarning, Users, Eye, EyeOff, Route } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import logo from "@/imports/logo.png";
 
 const loginFeatures = [
   {
@@ -35,9 +36,22 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // --- FUNGSI GOOGLE LOGIN ---
-  const handleGoogleLogin = () => {
-    // Redirect user langsung ke endpoint backend untuk proses OAuth Google
-    window.location.href = "https://be-her-route.vercel.app/auth/google";
+  const handleGoogleLogin = async () => {
+    try {
+      // 1. Minta URL Google Login (Supabase) dari Backend
+      const res = await fetch("https://be-her-route.vercel.app/auth/google");
+      const data = await res.json();
+
+      // 2. Lempar user ke URL otorisasi yang didapat
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        alert("Gagal mendapatkan link login Google dari server.");
+      }
+    } catch (err) {
+      console.error("Google login error:", err);
+      alert("Terjadi kesalahan saat mencoba terhubung ke Google.");
+    }
   };
 
   // --- FUNGSI MANUAL LOGIN / REGISTER ---
@@ -94,12 +108,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
       {/* ── Left Panel ── */}
       <div className="login-panel-gradient hidden lg:flex flex-col justify-between px-[90px] py-[60px] w-[40%] min-h-screen shrink-0">
         <div className="flex items-center gap-[17px]">
-          <div
-            className="w-[80px] h-[80px] rounded-full flex items-center justify-center font-semibold text-[20px] shrink-0"
-            style={{ background: "#FA1190", color: "#FCF8FA" }}
-          >
-            HR
-          </div>
+          <img src={logo} alt="HerRoute logo" className="w-[80px] h-[80px] rounded-full object-cover shrink-0" />
           <span className="font-semibold text-[28px] leading-[34px]" style={{ color: "#FCF8FA" }}>
             HerRoute
           </span>
@@ -141,7 +150,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             Welcome to <span className="font-semibold" style={{ color: "#FA1190" }}>HerRoute</span>
           </h1>
 
-          {/* Tombol Google Login yang sudah aktif */}
+          {/* Tombol Google Login */}
           <button
             type="button"
             onClick={handleGoogleLogin}
