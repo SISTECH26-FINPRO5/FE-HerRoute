@@ -34,33 +34,55 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- FUNGSI GOOGLE LOGIN ---
+  const handleGoogleLogin = () => {
+    // Redirect user langsung ke endpoint backend untuk proses OAuth Google
+    window.location.href = "https://be-her-route.vercel.app/auth/google";
+  };
+
+  // --- FUNGSI MANUAL LOGIN / REGISTER ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (tab === "register") {
-      console.log("Register belum diimplementasi");
-      return;
-    }
-
-    // --- LOGIN via API ---
     setIsLoading(true);
+
     try {
-      const res = await fetch("https://be-her-route.vercel.app/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      if (tab === "register") {
+        const res = await fetch("https://be-her-route.vercel.app/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            full_name: name,
+            email: email, 
+            password: password 
+          }),
+        });
 
-      if (!res.ok) {
-        throw new Error(`Login gagal: ${res.status}`);
+        if (!res.ok) throw new Error(`Register gagal: ${res.status}`);
+
+        alert("Registrasi berhasil! Silakan login menggunakan akun barumu.");
+        setTab("login"); 
+        setPassword("");
+
+      } else {
+        const res = await fetch("https://be-her-route.vercel.app/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!res.ok) throw new Error(`Login gagal: ${res.status}`);
+
+        const data = await res.json();
+        localStorage.setItem("token", data.session.access_token);
+        onLogin();
       }
-
-      const data = await res.json();
-      localStorage.setItem("token", data.session.access_token);
-      onLogin();
     } catch (err) {
-      console.error("Login error:", err);
-      alert("Email atau password salah");
+      console.error("Auth error:", err);
+      if (tab === "register") {
+        alert("Gagal melakukan registrasi. Pastikan email belum terdaftar.");
+      } else {
+        alert("Email atau password salah");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +93,6 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
 
       {/* ── Left Panel ── */}
       <div className="login-panel-gradient hidden lg:flex flex-col justify-between px-[90px] py-[60px] w-[40%] min-h-screen shrink-0">
-
-        {/* Logo + name */}
         <div className="flex items-center gap-[17px]">
           <div
             className="w-[80px] h-[80px] rounded-full flex items-center justify-center font-semibold text-[20px] shrink-0"
@@ -85,7 +105,6 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           </span>
         </div>
 
-        {/* Tagline + features */}
         <div className="flex flex-col gap-[24px]">
           <h2 className="font-semibold text-[36px] leading-[44px]" style={{ color: "#FCF8FA" }}>
             Rute aman, panggilan darurat &amp; pelaporan anonim dalam satu genggaman.
@@ -111,21 +130,21 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             ))}
           </div>
         </div>
-
         <div />
       </div>
 
       {/* ── Right Panel ── */}
       <div className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="login-form-card w-full max-w-[788px] px-[70px] py-[70px] flex flex-col gap-[36px]">
-
-          {/* Heading */}
+          
           <h1 className="text-[36px] leading-[44px] font-normal text-center" style={{ color: "#FCF8FA" }}>
             Welcome to <span className="font-semibold" style={{ color: "#FA1190" }}>HerRoute</span>
           </h1>
 
-          {/* Google login */}
+          {/* Tombol Google Login yang sudah aktif */}
           <button
+            type="button"
+            onClick={handleGoogleLogin}
             className="w-full h-[77px] rounded-[8px] flex items-center justify-center gap-[16px] font-normal text-[24px] hover:bg-gray-50 transition-colors"
             style={{ background: "#FFFFFF", color: "#2F2F2F", boxShadow: "0px 4px 15px rgba(0,0,0,0.11)" }}
           >
@@ -138,14 +157,12 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             Login with Google
           </button>
 
-          {/* OR divider */}
           <div className="flex items-center gap-[35px]">
             <div className="flex-1 h-px" style={{ background: "#BFBFBF" }} />
             <span className="text-[16px] leading-[19px]" style={{ color: "#FCF8FA" }}>OR</span>
             <div className="flex-1 h-px" style={{ background: "#BFBFBF" }} />
           </div>
 
-          {/* Login / Register tab */}
           <div className="tab-pill flex w-full h-[50px] p-[6px] gap-[4px]">
             {(["login", "register"] as const).map((t) => (
               <button
@@ -159,10 +176,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             ))}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-[20px]">
-
-            {/* Name — register only */}
             <AnimatePresence>
               {tab === "register" && (
                 <motion.div
@@ -189,7 +203,6 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
               )}
             </AnimatePresence>
 
-            {/* Email */}
             <div className="flex items-center gap-[20px] px-[15px] h-[77px] rounded-[8px]" style={{ background: "#1A0F18" }}>
               <svg width="30" height="24" viewBox="0 0 30 24" fill="none">
                 <rect width="30" height="24" rx="4" fill="#FCF8FA" fillOpacity="0.15" />
@@ -206,7 +219,6 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
               </div>
             </div>
 
-            {/* Password */}
             <div className="flex items-center gap-[20px] px-[15px] h-[77px] rounded-[8px]" style={{ background: "#1A0F18" }}>
               <svg width="27" height="27" viewBox="0 0 27 27" fill="none">
                 <circle cx="13.5" cy="10" r="6" stroke="#FCF8FA" strokeWidth="1.5" fill="none" />
@@ -228,7 +240,6 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
               </button>
             </div>
 
-            {/* Remember me + Forgot password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-[10px] cursor-pointer select-none">
                 <div
@@ -249,12 +260,10 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
               </button>
             </div>
 
-            {/* Submit */}
             <button type="submit" className="btn-primary h-[77px] mt-[4px]" disabled={isLoading}>
               {isLoading ? "Loading..." : tab === "login" ? "Login" : "Register"}
             </button>
 
-            {/* Switch tab */}
             <p className="text-[16px] text-center" style={{ color: "#FCF8FA" }}>
               {tab === "login" ? "Don't have an account? " : "Already have an account? "}
               <button
