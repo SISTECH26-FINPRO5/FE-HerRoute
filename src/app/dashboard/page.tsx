@@ -112,6 +112,12 @@ export function DashboardPage({ onLogout, onGoToMap }: { onLogout: () => void; o
               onClick={() => {
                 if (item === "Map") {
                   onGoToMap();
+                } else if (item === "Report") {
+                  setModal("report");
+                  setActiveNav(item);
+                } else if (item === "Contact") {
+                  setModal("contacts");
+                  setActiveNav(item);
                 } else {
                   setActiveNav(item);
                 }
