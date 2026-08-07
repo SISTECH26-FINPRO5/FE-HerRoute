@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Rectangle, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import logo from "@/imports/logo.png";
 
 const DefaultIcon = L.icon({
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -298,7 +299,7 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
             {/* ─── NAVBAR ─── */}
             <nav className="fixed top-0 z-50 flex h-[80px] lg:h-[103px] w-full items-center justify-between px-5 lg:px-[120px] bg-[#75003F]">
                 <div className="flex items-center gap-2 lg:gap-[17px]">
-                    <div className="flex h-[40px] w-[40px] lg:h-[50px] lg:w-[50px] items-center justify-center rounded-full bg-[#FA1190] text-[10px] lg:text-[12px] font-bold text-[#FCF8FA]">HR</div>
+                    <img src={logo} alt="HerRoute logo" className="h-[40px] w-[40px] lg:h-[50px] lg:w-[50px] rounded-full object-cover" />
                     <div className="flex flex-col">
                         <span className="text-[14px] lg:text-[16px] font-bold leading-[19px] text-[#FCF8FA]">HerRoute</span>
                         <span className="hidden lg:block text-[12px] leading-[15px] text-[#F7DDEB]">Perlindungan & Rute Aman</span>
