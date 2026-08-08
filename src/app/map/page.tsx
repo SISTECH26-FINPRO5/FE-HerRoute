@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup, Rectangle, Polyline } from "rea
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import logo from "@/imports/logo.png";
+// IMPORT RECHARTS
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const DefaultIcon = L.icon({
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -24,31 +26,8 @@ const currentPositionIcon = L.divIcon({
                 <ellipse opacity="0.7" cx="63.2124" cy="47.2848" rx="38.188" ry="37.6816" fill="#FA1190"/>
                 <ellipse cx="63.4515" cy="47.5236" rx="29.8343" ry="30.2413" fill="#FA1190"/>
                 
-                <!-- Teks dimasukkan LANGSUNG ke dalam SVG -->
                 <text x="63" y="44" fill="white" font-family="sans-serif" font-weight="bold" font-size="9px" text-anchor="middle">Posisi kamu</text>
                 <text x="63" y="55" fill="white" font-family="sans-serif" font-weight="bold" font-size="9px" text-anchor="middle">saat ini</text>
-                
-                <defs>
-                    <filter id="filter0_ddd_191_979" x="0" y="0" width="125.947" height="149.044" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-                        <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-                        <feOffset dy="10"/>
-                        <feGaussianBlur stdDeviation="5"/>
-                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.09 0"/>
-                        <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_191_979"/>
-                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-                        <feOffset dy="22"/>
-                        <feGaussianBlur stdDeviation="6.5"/>
-                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.05 0"/>
-                        <feBlend mode="normal" in2="effect1_dropShadow_191_979" result="effect2_dropShadow_191_979"/>
-                        <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-                        <feOffset dy="39"/>
-                        <feGaussianBlur stdDeviation="7.5"/>
-                        <feColorMatrix type="matrix" values="0 0 0 0 0.584314 0 0 0 0 0.45098 0 0 0 0 0.886275 0 0 0 0.01 0"/>
-                        <feBlend mode="normal" in2="effect2_dropShadow_191_979" result="effect3_dropShadow_191_979"/>
-                        <feBlend mode="normal" in="SourceGraphic" in2="effect3_dropShadow_191_979" result="shape"/>
-                    </filter>
-                </defs>
             </svg>
         </div>
     `,
@@ -92,12 +71,29 @@ function computeBearing(from: [number, number], to: [number, number]): number {
     const [lat2, lon2] = to.map((v) => (v * Math.PI) / 180);
     const dLon = lon2 - lon1;
     const y = Math.sin(dLon) * Math.cos(lat2);
-    const x =
-        Math.cos(lat1) * Math.sin(lat2) -
-        Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
     const bearingRad = Math.atan2(y, x);
     return ((bearingRad * 180) / Math.PI + 360) % 360;
 }
+
+
+// 1. MOCK GEOCODER (PENERJEMAH TEKS KE KOORDINAT)
+// Menerjemahkan input teks (misal "blok m") menjadi titik koordinat Latitude/Longitude asli.
+// Karena API ML hanya menerima angka koordinat, kita butuh kamus ini sebelum memanggil API.
+const MOCK_GEOCODER: Record<string, { lat: number, lon: number }> = {
+    "blok m": { lat: -6.2444, lon: 106.7973 },
+    "echigoya": { lat: -6.2450, lon: 106.7995 },
+    "dukuh atas": { lat: -6.2023, lon: 106.8222 },
+    "lebak bulus": { lat: -6.2893, lon: 106.7744 },
+};
+
+const getCoordinates = (placeName: string, fallbackLat: number, fallbackLon: number) => {
+    const query = placeName.toLowerCase();
+    for (const key in MOCK_GEOCODER) {
+        if (query.includes(key)) return MOCK_GEOCODER[key];
+    }
+    return { lat: fallbackLat, lon: fallbackLon };
+};
 
 const DUMMY_ROUTES = [
     {
@@ -108,12 +104,7 @@ const DUMMY_ROUTES = [
         safe_points_count: 2,
         reason: "Jalur utama, penerangan baik, melewati 2 safe place.",
         color: "#22C55E",
-        waypoints: [
-            [-6.2444, 106.7973],
-            [-6.2446, 106.7982],
-            [-6.2447, 106.7990],
-            [-6.2450, 106.7995],
-        ] as [number, number][],
+        waypoints: [[-6.2444, 106.7973], [-6.2446, 106.7982], [-6.2447, 106.7990], [-6.2450, 106.7995]] as [number, number][],
     },
     {
         id: "route_b",
@@ -123,12 +114,7 @@ const DUMMY_ROUTES = [
         safe_points_count: 1,
         reason: "Rute lebih pendek, tapi menyerempet ujung area waspada.",
         color: "#EAB308",
-        waypoints: [
-            [-6.2444, 106.7973],
-            [-6.2448, 106.7985],
-            [-6.2452, 106.7993],
-            [-6.2450, 106.7995],
-        ] as [number, number][],
+        waypoints: [[-6.2444, 106.7973], [-6.2448, 106.7985], [-6.2452, 106.7993], [-6.2450, 106.7995]] as [number, number][],
     },
     {
         id: "route_c",
@@ -138,14 +124,39 @@ const DUMMY_ROUTES = [
         safe_points_count: 0,
         reason: "Melewati area dengan laporan rawan tinggi, hindari di malam hari.",
         color: "#EF4444",
-        waypoints: [
-            [-6.2444, 106.7973],
-            [-6.2452, 106.7988],
-            [-6.2460, 106.7998],
-            [-6.2450, 106.7995],
-        ] as [number, number][],
+        waypoints: [[-6.2444, 106.7973], [-6.2452, 106.7988], [-6.2460, 106.7998], [-6.2450, 106.7995]] as [number, number][],
     },
 ];
+
+// ─── DATA GRAFIK PREDIKSI RISIKO WAKTU ───
+const riskChartData = [
+    { time: '17:00', risk: 40 },
+    { time: '17:30', risk: 85 },
+    { time: '18:00', risk: 50 },
+    { time: '18:30', risk: 10 },
+    { time: '19:00', risk: 45 },
+    { time: '19:30', risk: 48 },
+    { time: '20:00', risk: 50 },
+];
+
+const CustomYAxisTick = ({ x, y, payload }: any) => {
+    let text = "Rendah";
+    let color = "#22C55E";
+
+    if (payload.value === 50) {
+        text = "Sedang";
+        color = "#EAB308";
+    } else if (payload.value === 90) {
+        text = "Tinggi";
+        color = "#EF4444";
+    }
+
+    return (
+        <text x={x} y={y} dy={4} textAnchor="end" fill={color} fontSize={12} fontWeight={500}>
+            {text}
+        </text>
+    );
+};
 
 const INITIAL_HEATMAP_ZONES = [
     {
@@ -190,13 +201,13 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     const [zoneDataMap, setZoneDataMap] = useState<{ [key: number]: any }>({});
     const [loadingZoneId, setLoadingZoneId] = useState<number | null>(null);
 
-    const BLOK_M_LAT = -6.2444;
-    const BLOK_M_LON = 106.7973;
+    // Default Pusat Peta
+    const [mapCenter, setMapCenter] = useState<[number, number]>([-6.2444, 106.7973]);
 
     useEffect(() => {
         const fetchSafePlaces = async () => {
             try {
-                const response = await fetch(`https://be-her-route.vercel.app/api/ml/safe-places?lat=${BLOK_M_LAT}&lon=${BLOK_M_LON}&k=3`);
+                const response = await fetch(`https://be-her-route.vercel.app/api/ml/safe-places?lat=-6.2444&lon=106.7973&k=3`);
                 if (response.ok) {
                     const data = await response.json();
                     const formattedPlaces = data.map((place: any, index: number) => ({
@@ -240,27 +251,58 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
     const handleSearchRoute = async () => {
         setIsLoading(true);
         try {
+            // 2. PROSES PENGIRIMAN DATA KOORDINAT KE API ML
+            // A. Gunakan Mock Geocoder untuk menerjemahkan teks di inputan menjadi angka koordinat.
+            const startCoords = getCoordinates(startPoint, -6.2444, 106.7973);
+            const endCoords = getCoordinates(endPoint, -6.2450, 106.7995);
+
+            // B. Geser titik pusat peta (Leaflet Map Center) sesuai koordinat awal rute.
+            setMapCenter([startCoords.lat, startCoords.lon]);
+
+            // C. Siapkan format data (JSON Payload) yang diminta oleh API ML.
             const payload = {
-                start_lat: BLOK_M_LAT,
-                start_lon: BLOK_M_LON,
-                end_lat: -6.2450,
-                end_lon: 106.7995,
+                start_lat: startCoords.lat,
+                start_lon: startCoords.lon,
+                end_lat: endCoords.lat,
+                end_lon: endCoords.lon,
                 mode: "safe"
             };
+
+            // D. Tembak endpoint API ML dengan metode POST dan kirim koordinatnya.
             const routeResponse = await fetch("https://be-her-route.vercel.app/api/ml/safe-route", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
+
             if (routeResponse.ok) {
+                // E. Tangkap balasan hasil perhitungan risiko dari API ML.
                 const routeData = await routeResponse.json();
                 const baseAvgRisk = routeData.avg_risk || 18.94;
                 const mockNote = routeData.mock_note || '';
-                const updatedRoutes = DUMMY_ROUTES.map((route) => {
+
+                // Regenerate dummy waypoints berdasarkan koordinat baru agar rutenya pindah
+                const updatedRoutes = DUMMY_ROUTES.map((route, i) => {
                     const multiplier = RISK_LEVEL_MULTIPLIER[route.risk_level] ?? 1;
                     const routeRiskScore = (baseAvgRisk * multiplier).toFixed(2);
-                    return { ...route, reason: `Rute hasil generate AI. Avg Risk Score: ${routeRiskScore}. ${mockNote}` };
+
+                    const offset = i * 0.0005; // Sedikit pergeseran koordinat agar rute beda-beda
+                    const newWaypoints = [
+                        [startCoords.lat, startCoords.lon],
+                        [startCoords.lat - offset, startCoords.lon + 0.001],
+                        [endCoords.lat + offset, endCoords.lon - 0.001],
+                        [endCoords.lat, endCoords.lon]
+                    ] as [number, number][];
+
+                    return {
+                        ...route,
+                        waypoints: newWaypoints,
+                        reason: `Rute hasil generate AI. Avg Risk Score: ${routeRiskScore}. ${mockNote}`
+                    };
                 });
+
+                // 3. MENGGABUNGKAN HASIL API KE UI
+                // Setelah data rute di-update, simpan ke State `routes`. 
                 setRoutes(updatedRoutes);
                 setIsRouteDrawn(true);
                 setSelectedRouteId(updatedRoutes[0].id);
@@ -306,7 +348,6 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                     </div>
                 </div>
 
-                {/* Menu disembunyikan di HP, tampil di Desktop */}
                 <div className="hidden lg:flex mx-auto items-center gap-[56px]">
                     {["Homepage", "Map", "Report", "Contact"].map((item) => (
                         <button
@@ -333,13 +374,14 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
 
                 {/* KOLOM KIRI */}
                 <section className="flex w-full lg:w-[472px] shrink-0 flex-col gap-[30px]">
+
+                    {/* FORM RUTE */}
                     <div className="rounded-[15px] bg-[#1E2024] px-5 py-8 lg:px-[50px] lg:py-[60px]">
                         <h2 className="mb-6 lg:mb-8 text-[18px] lg:text-[20px] font-bold text-white">Masukkan Rute Anda</h2>
                         <div className="mb-8 lg:mb-[40px] flex items-center gap-4 relative">
                             <div className="relative flex-1 flex flex-col gap-5">
                                 <div className="absolute left-[15px] top-[40px] z-0 h-10 w-[2px] bg-white/20"></div>
 
-                                {/* START POINT */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -349,7 +391,6 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                     <input type="text" value={startPoint} onChange={(e) => setStartPoint(e.target.value)} className="w-full rounded-[10px] border border-white/10 bg-[#120B11] px-4 py-[14px] text-[14px] font-semibold text-white outline-none focus:border-[#FA1190]" />
                                 </div>
 
-                                {/* END POINT */}
                                 <div className="relative z-10 flex items-center gap-4 pr-[20px]">
                                     <span className="flex h-[32px] w-[32px] shrink-0 items-center justify-center">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#FA1190">
@@ -369,6 +410,47 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                         </button>
                     </div>
 
+                    {/* GRAFIK PREDIKSI RISIKO WAKTU */}
+                    <div className="rounded-[15px] bg-[#1E2024] p-5 lg:p-[40px]">
+                        <h2 className="mb-[24px] text-[18px] lg:text-[20px] font-bold text-white">Prediksi Risiko Waktu</h2>
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={riskChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#FA1190" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#FA1190" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.2)" />
+                                    <XAxis
+                                        dataKey="time"
+                                        stroke="rgba(255,255,255,0.6)"
+                                        fontSize={12}
+                                        tickLine={true}
+                                        axisLine={true}
+                                    />
+                                    <YAxis
+                                        ticks={[10, 50, 90]}
+                                        tick={<CustomYAxisTick />}
+                                        axisLine={true}
+                                        tickLine={false}
+                                        domain={[0, 100]}
+                                        stroke="rgba(255,255,255,0.6)"
+                                        width={60}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1A0F18', border: '1px solid #FA1190', borderRadius: '8px' }}
+                                        labelStyle={{ color: '#FCF8FA' }}
+                                        itemStyle={{ color: '#FA1190' }}
+                                    />
+                                    <Area type="monotone" dataKey="risk" stroke="#FA1190" strokeWidth={3} fillOpacity={1} fill="url(#colorRisk)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* SAFE PLACE LIST */}
                     <div className="rounded-[15px] bg-[#1E2024] p-5 lg:p-[40px]">
                         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
@@ -402,13 +484,13 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                 {/* KOLOM KANAN (MAP + RUTE) */}
                 <section className="flex w-full lg:w-auto lg:flex-1 flex-col gap-[30px]">
 
-                    {/* Tinggi map disesuaikan untuk HP dan Desktop */}
                     <div className="relative h-[350px] lg:h-[480px] w-full overflow-hidden rounded-[15px] border border-white/5 bg-[#120B11] z-0">
                         <MapContainer
-                            center={[BLOK_M_LAT, BLOK_M_LON]}
+                            center={mapCenter}
                             zoom={15}
                             scrollWheelZoom={true}
                             style={{ height: '100%', width: '100%', zIndex: 0 }}
+                            key={mapCenter.join(',')} // Trick untuk merefresh center peta
                         >
                             <TileLayer
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -454,9 +536,12 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                 );
                             })}
 
-                            {/* GARIS RUTE + ARROW */}
+                            {/* ============================================================================
+                                BAGIAN INI MENGGAMBAR HASIL DARI API KE PETA (LEAFLET)
+                                ============================================================================ */}
                             {isRouteDrawn && activeRoute && (
                                 <React.Fragment>
+                                    {/* Komponen Polyline ini akan menggambar garis jalan raya mengikuti titik-titik (waypoints) yang ada di activeRoute */}
                                     <Polyline
                                         positions={activeRoute.waypoints}
                                         pathOptions={{
@@ -466,17 +551,17 @@ export default function MapDashboard({ onGoToHomepage }: MapDashboardProps) {
                                             dashArray: activeRoute.risk_level === "high" ? "8 8" : undefined,
                                         }}
                                     />
+                                    {/* Menggambar ikon panah kecil di sepanjang garis rute */}
                                     {arrowMarkers.map((a) => (
                                         <Marker key={a.key} position={a.position} icon={routeArrowIcon(activeRoute.color, a.angle)} interactive={false} />
                                     ))}
                                 </React.Fragment>
                             )}
 
-                            {/* Posisi saat ini */}
-                            <Marker position={[BLOK_M_LAT, BLOK_M_LON]} icon={currentPositionIcon} />
+                            {/* Posisi Awal Berdasarkan Input */}
+                            <Marker position={mapCenter} icon={currentPositionIcon} />
                         </MapContainer>
 
-                        {/* Legenda (Disembunyikan di layar sangat kecil agar tidak menghalangi map) */}
                         <div className="hidden sm:block absolute bottom-[20px] left-[20px] rounded-[10px] bg-[#1E2024]/95 p-4 shadow-lg backdrop-blur-sm border border-white/10 z-[1000] pointer-events-none">
                             <h3 className="mb-2 text-[12px] font-bold text-white">Legenda</h3>
                             <div className="flex flex-col gap-2 text-[11px] font-semibold text-white/80">
